@@ -112,37 +112,24 @@ function createGrid() {
 
 function fitCanvas() {
 
-  const scale =
-    min(
-      windowWidth / W,
-      windowHeight / H
-    );
+  const scale = min(
+    windowWidth / W,
+    windowHeight / H
+  );
 
-  const canvas =
-    document.querySelector("canvas");
+  const canvas = document.querySelector("canvas");
 
-  const newW =
-    W * scale;
+  if (!canvas) return;
 
-  const newH =
-    H * scale;
+  const newW = W * scale;
+  const newH = H * scale;
 
-  canvas.style.width =
-    newW + "px";
+  canvas.style.width = newW + "px";
+  canvas.style.height = newH + "px";
 
-  canvas.style.height =
-    newH + "px";
-
-  canvas.style.position =
-    "absolute";
-
-  canvas.style.left =
-    (windowWidth - newW) / 2 +
-    "px";
-
-  canvas.style.top =
-    (windowHeight - newH) / 2 +
-    "px";
+  canvas.style.position = "absolute";
+  canvas.style.left = (windowWidth - newW) / 2 + "px";
+  canvas.style.top = (windowHeight - newH) / 2 + "px";
 }
 
 
