@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <title>Tschumi Audio Reactive</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/p5.min.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/addons/p5.sound.min.js"></script>
+
+</head>
+
+<body>
+
+<script>
+
+// ENTIRE CODE 3 HERE
+
+//WEBSITE CODE - TSCHUMI AUDIO REACTIVE
+
+// ============================================================
+// TSCHUMI + LABELS
+// AUDIO REACTIVE VERSION
+// miniature2.mp3
+// ============================================================
+
+let cols = 8;
+let rows = 2;
+
+let events = [];
+
+let sound;
+let fft;
+let amp;
+
+let patternSeed = 1;
+let lastHit = 0;
+
+let bassEnergy = 0;
+let midEnergy = 0;
+let highEnergy = 0;
+let overallEnergy = 0;
+
+let hitStrength = 0;
+let previousEnergy = 0;
+
+
+// ============================================================
+// PRELOAD
+// ============================================================
+
+function preload() {
+
+  sound = loadSound("miniature2.mp3");
+
+}
+
+
+// ============================================================
+// SETUP
+// ============================================================
+
+function setup() {
+
+  // Remove default browser spacing
+  document.body.style.margin = "0";
+
+  // Centre the canvas horizontally and vertically
+  document.body.style.display = "flex";
+  document.body.style.justifyContent = "center";
+  document.body.style.alignItems = "center";
+  document.body.style.minHeight = "100vh";
+  document.body.style.background = "rgb(250, 250, 250)";
+  document.body.style.overflow = "hidden";
+
+
+  // Fit canvas to available screen
+  let canvasWidth =
+    min(
+      1300,
+      windowWidth - 20
+    );
+
+  let canvasHeight =
+    min(
+      900,
+      windowHeight - 20
+    );
+
+
+  createCanvas(
+    canvasWidth,
+    canvasHeight
+  );
+
+
+  // Audio analysis
+  fft = new p5.FFT(
+    0.85,
+    256
+  );
+
+  amp = new p5.Amplitude();
+
+
+  textFont("monospace");
+
+}
+
+
+// ============================================================
+// DRAW
+// ============================================================
+
+function draw() {
+
+  background(250);
+
+
+  // ----------------------------------------------------------
+  // AUDIO ANALYSIS
+  // ----------------------------------------------------------
+
+  fft.analyze();
+
+  bassEnergy =
+    fft.getEnergy("bass");
+
+  midEnergy =
+    fft.getEnergy("mid");
+
+  highEnergy =
+    fft.getEnergy("treble");
+
+  overallEnergy =
+    amp.getLevel();
+
+
+  detectPercussion();
+
+
+  // ----------------------------------------------------------
+  // MAIN GRID
+  // ----------------------------------------------------------
+
+  events = [];
+
+  let w =
+    width / cols;
+
+  let h =
+    height / rows;
+
+
+  for (
+    let r = 0;
+    r < rows;
+    r++
+  ) {
+
+    for (
+      let c = 0;
+      c < cols;
+      c++
+    ) {
+
+      push();
+
+      translate(
+        c * w,
+        r * h
+      );
+
+      drawPanel(
+        w,
+        h,
+        c + r * cols,
+        c,
+        r
+      );
+
+      pop();
+
+    }
+
+  }
+
+
+  // ----------------------------------------------------------
+  // EXTRA INFORMATIONAL LAYERS
+  // ----------------------------------------------------------
+
+  drawFrequencyRuler();
+
+  drawConnections();
+
+  drawCallouts();
+
+  drawMetadata();
+
+  drawClassification();
+
+  drawDiagnostics();
+
+  drawConfidence();
+
+
+  // ----------------------------------------------------------
+  // PERCUSSION FLASH
+  // ----------------------------------------------------------
+
+  if (
+    hitStrength > 0
+  ) {
+
+    noFill();
+
+    stroke(
+      0,
+      hitStrength * 100
+    );
+
+    strokeWeight(2);
+
+    rect(
+      3,
+      3,
+      width - 6,
+      height - 6
+    );
+
+
+    hitStrength *= 0.82;
+
+  }
+
+}
+
+
+// ============================================================
+// PERCUSSION DETECTION
+// ============================================================
+
+function detectPercussion() {
+
+  let now =
+    millis();
+
+
+  let bass =
+    fft.getEnergy(
+      40,
+      180
+    );
+
+
+  let lowMid =
+    fft.getEnergy(
+      180,
+      600
+    );
+
+
+  let currentEnergy =
+    bass * 0.7 +
+    lowMid * 0.3;
+
+
+  let rise =
+    currentEnergy -
+    previousEnergy;
+
+
+  // ----------------------------------------------------------
+  // PERCUSSION SETTINGS
+  // ----------------------------------------------------------
+
+  let threshold = 28;
+
+  let cooldown = 130;
+
+
+  // ----------------------------------------------------------
+  // DETECT SUDDEN ENERGY INCREASE
+  // ----------------------------------------------------------
+
+  if (
+    rise > threshold &&
+    currentEnergy > 70 &&
+    now - lastHit > cooldown
+  ) {
+
+    triggerPatternChange(
+      rise
+    );
+
+    lastHit = now;
+
+  }
+
+
+  previousEnergy =
+    lerp(
+      previousEnergy,
+      currentEnergy,
+      0.25
+    );
+
+}
+
+
+// ============================================================
+// CHANGE PATTERN AFTER PERCUSSIVE HIT
+// ============================================================
+
+function triggerPatternChange(
+  strength
+) {
+
+  patternSeed++;
+
+  randomSeed(
+    patternSeed
+  );
+
+
+  hitStrength =
+    constrain(
+      strength / 80,
+      0.25,
+      1
+    );
+
+
+  events = [];
+
+}
+
+
+// ============================================================
+// MAIN PANEL
+// ============================================================
+
+function drawPanel(
+  w,
+  h,
+  id,
+  c,
+  r
+) {
+
+
+  // ----------------------------------------------------------
+  // PANEL BORDER
+  // ----------------------------------------------------------
+
+  stroke(0);
+
+  strokeWeight(1);
+
+  noFill();
+
+  rect(
+    0,
+    0,
+    w,
+    h
+  );
+
+
+  // ----------------------------------------------------------
+  // TOP BLACK DETECTION FIELD
+  // ----------------------------------------------------------
+
+  fill(0);
+
+  noStroke();
+
+  rect(
+    0,
+    0,
+    w,
+    h * 0.22
+  );
+
+
+  // ----------------------------------------------------------
+  // STABLE RANDOM PATTERN
+  // ----------------------------------------------------------
+
+  randomSeed(
+    patternSeed * 1000 +
+    id * 30
+  );
+
+
+  let rays =
+    floor(
+      map(
+        highEnergy,
+        0,
+        255,
+        4,
+        18
+      )
+    );
+
+
+  rays +=
+    floor(
+      hitStrength * 10
+    );
+
+
+  // ----------------------------------------------------------
+  // DETECTION RAYS
+  // ----------------------------------------------------------
+
+  stroke(255);
+
+  strokeWeight(2);
+
+
+  for (
+    let i = 0;
+    i < rays;
+    i++
+  ) {
+
+    let x =
+      w / 2 +
+      random(
+        -12,
+        12
+      );
+
+
+    let y =
+      random(
+        8,
+        h * 0.16
+      );
+
+
+    let spread =
+      map(
+        midEnergy,
+        0,
+        255,
+        20,
+        90
+      );
+
+
+    line(
+      x,
+      h * 0.20,
+      x +
+        random(
+          -spread,
+          spread
+        ),
+      random(
+        5,
+        h * 0.03
+      )
+    );
+
+  }
+
+
+  // ----------------------------------------------------------
+  // HORIZONTAL STRUCTURE
+  // ----------------------------------------------------------
+
+  stroke(0);
+
+  strokeWeight(1);
+
+
+  line(
+    0,
+    h * 0.22,
+    w,
+    h * 0.22
+  );
+
+
+  line(
+    0,
+    h * 0.45,
+    w,
+    h * 0.45
+  );
+
+
+  line(
+    0,
+    h * 0.72,
+    w,
+    h * 0.72
+  );
+
+
+  // ==========================================================
+  // MAIN AUDIO GRAPH
+  // ==========================================================
+
+  noFill();
+
+  stroke(0);
+
+  strokeWeight(1);
+
+  beginShape();
+
+
+  let graphPoints =
+    floor(
+      map(
+        highEnergy,
+        0,
+        255,
+        18,
+        42
+      )
+    );
+
+
+  for (
+    let i = 0;
+    i < graphPoints;
+    i++
+  ) {
+
+    let x =
+      map(
+        i,
+        0,
+        graphPoints - 1,
+        10,
+        w - 10
+      );
+
+
+    let wave =
+      sin(
+        i * 0.4 +
+        id +
+        patternSeed * 0.13
+      );
+
+
+    let noiseAmount =
+      random(
+        8,
+        35
+      );
+
+
+    let audioAmount =
+      map(
+        bassEnergy,
+        0,
+        255,
+        0.4,
+        2.8
+      );
+
+
+    let y =
+      h * 0.60 +
+      wave *
+      noiseAmount *
+      audioAmount;
+
+
+    // Percussion deformation
+
+    if (
+      hitStrength > 0.1
+    ) {
+
+      y +=
+        sin(i * 1.8) *
+        hitStrength *
+        map(
+          midEnergy,
+          0,
+          255,
+          4,
+          35
+        );
+
+    }
+
+
+    vertex(
+      x,
+      y
+    );
+
+  }
+
+
+  endShape();
+
+
+  // ==========================================================
+  // SECOND GRAPH
+  // ==========================================================
+
+  stroke(100);
+
+  beginShape();
+
+
+  let graphOffset =
+    map(
+      overallEnergy,
+      0,
+      0.5,
+      0,
+      h * 0.12
+    );
+
+
+  for (
+    let i = 0;
+    i < 20;
+    i++
+  ) {
+
+    let x =
+      map(
+        i,
+        0,
+        19,
+        10,
+        w - 10
+      );
+
+
+    let y =
+      h * 0.66 +
+      sin(
+        i * 0.6 +
+        patternSeed
+      ) *
+      graphOffset;
+
+
+    vertex(
+      x,
+      y
+    );
+
+  }
+
+
+  endShape();
+
+
+  // ==========================================================
+  // CONSTRUCTION LINES
+  // ==========================================================
+
+  stroke(120);
+
+
+  let constructionLines =
+    floor(
+      map(
+        midEnergy,
+        0,
+        255,
+        5,
+        12
+      )
+    );
+
+
+  for (
+    let i = 0;
+    i < constructionLines;
+    i++
+  ) {
+
+    let x =
+      map(
+        i,
+        0,
+        constructionLines - 1,
+        15,
+        w - 15
+      );
+
+
+    line(
+      x,
+      h * 0.46,
+      x,
+      h * 0.72
+    );
+
+  }
+
+
+  // ==========================================================
+  // EVENT POINTS
+  // ==========================================================
+
+  stroke(0);
+
+
+  let points =
+    floor(
+      map(
+        highEnergy,
+        0,
+        255,
+        5,
+        16
+      )
+    );
+
+
+  for (
+    let i = 0;
+    i < points;
+    i++
+  ) {
+
+    point(
+      random(
+        15,
+        w - 15
+      ),
+      random(
+        h * 0.26,
+        h * 0.42
+      )
+    );
+
+  }
+
+
+  // ==========================================================
+  // BARCODE
+  // ==========================================================
+
+  let barcodeY =
+    h * 0.90;
+
+
+  strokeWeight(3);
+
+
+  let bars =
+    floor(
+      map(
+        bassEnergy,
+        0,
+        255,
+        10,
+        25
+      )
+    );
+
+
+  for (
+    let i = 0;
+    i < bars;
+    i++
+  ) {
+
+    if (
+      random() < 0.45
+    ) {
+
+      let x =
+        map(
+          i,
+          0,
+          bars - 1,
+          10,
+          w - 10
+        );
+
+
+      line(
+        x,
+        barcodeY,
+        x + 4,
+        barcodeY
+      );
+
+    }
+
+  }
+
+
+  // ==========================================================
+  // EVENT GENERATION
+  // ==========================================================
+
+  for (
+    let i = 0;
+    i < 4;
+    i++
+  ) {
+
+    let x =
+      random(w);
+
+    let y =
+      random(h);
+
+
+    events.push({
+
+      x:
+        x + c * w,
+
+      y:
+        y + r * h,
+
+      freq:
+        random(
+          20,
+          96
+        ),
+
+      amp:
+        map(
+          overallEnergy,
+          0,
+          0.5,
+          -70,
+          -18
+        ),
+
+      conf:
+        random(
+          0.2,
+          1
+        )
+
+    });
+
+  }
+
+
+  // ==========================================================
+  // PANEL NUMBER
+  // ==========================================================
+
+  strokeWeight(1);
+
+  noStroke();
+
+  fill(0);
+
+  textSize(10);
+
+  text(
+    220 + id * 7,
+    w * 0.42,
+    12
+  );
+
+}
+
+
+// ============================================================
+// CONNECTION LINES
+// ============================================================
+
+function drawConnections() {
+
+  stroke(40);
+
+  strokeWeight(0.6);
+
+
+  for (
+    let i = 0;
+    i < events.length;
+    i++
+  ) {
+
+    let a =
+      events[i];
+
+
+    for (
+      let j = i + 1;
+      j < events.length;
+      j++
+    ) {
+
+      let b =
+        events[j];
+
+
+      let d =
+        dist(
+          a.x,
+          a.y,
+          b.x,
+          b.y
+        );
+
+
+      let connectionDistance =
+        map(
+          bassEnergy,
+          0,
+          255,
+          80,
+          220
+        );
+
+
+      if (
+        d <
+          connectionDistance &&
+        random() <
+          map(
+            midEnergy,
+            0,
+            255,
+            0.02,
+            0.18
+          )
+      ) {
+
+        line(
+          a.x,
+          a.y,
+          b.x,
+          b.y
+        );
+
+      }
+
+    }
+
+  }
+
+}
+
+
+// ============================================================
+// CALLOUTS
+// ============================================================
+
+function drawCallouts() {
+
+  textSize(8);
+
+
+  for (
+    let i = 0;
+    i < 18;
+    i++
+  ) {
+
+    let e =
+      random(events);
+
+
+    if (!e) {
+      continue;
+    }
+
+
+    stroke(120);
+
+    strokeWeight(0.5);
+
+
+    let lx =
+      e.x +
+      random(
+        25,
+        70
+      );
+
+
+    let ly =
+      e.y -
+      random(
+        15,
+        40
+      );
+
+
+    // Keep labels inside canvas
+
+    lx =
+      constrain(
+        lx,
+        5,
+        width - 100
+      );
+
+
+    ly =
+      constrain(
+        ly,
+        25,
+        height - 20
+      );
+
+
+    line(
+      e.x,
+      e.y,
+      lx,
+      ly
+    );
+
+
+    noStroke();
+
+    fill(40);
+
+
+    text(
+      nf(
+        e.freq,
+        2,
+        1
+      ) + " kHz",
+      lx + 3,
+      ly - 8
+    );
+
+
+    text(
+      "AMP " +
+      floor(e.amp) +
+      " dB",
+      lx + 3,
+      ly
+    );
+
+
+    text(
+      "ID " +
+      floor(
+        random(
+          1000,
+          9999
+        )
+      ),
+      lx + 3,
+      ly + 8
+    );
+
+  }
+
+}
+
+
+// ============================================================
+// FREQUENCY RULER
+// ============================================================
+
+function drawFrequencyRuler() {
+
+  stroke(0);
+
+  textAlign(CENTER);
+
+
+  for (
+    let i = 20;
+    i <= 100;
+    i += 5
+  ) {
+
+    let x =
+      map(
+        i,
+        20,
+        100,
+        80,
+        width - 80
+      );
+
+
+    line(
+      x,
+      30,
+      x,
+      40
+    );
+
+
+    if (
+      i % 10 == 0
+    ) {
+
+      noStroke();
+
+      fill(0);
+
+      text(
+        i + " kHz",
+        x,
+        22
+      );
+
+      stroke(0);
+
+    }
+
+  }
+
+}
+
+
+// ============================================================
+// METADATA
+// ============================================================
+
+function drawMetadata() {
+
+  fill(0);
+
+  textAlign(LEFT);
+
+  textSize(10);
+
+
+  text(
+    "ULTRASONIC ARCHIVE",
+    40,
+    70
+  );
+
+
+  text(
+    "------------------------------",
+    40,
+    82
+  );
+
+
+  let data = [
+
+    "FILE      : miniature2.mp3",
+
+    "DEVICE    : UXR-04",
+
+    "DATE      : 17 APR 2026",
+
+    "LOCATION  : GRID B17",
+
+    "DURATION  : AUDIO SOURCE",
+
+    "BAND      : 20-96 kHz",
+
+    "EVENTS    : " +
+      events.length,
+
+    "PATTERN   : " +
+      patternSeed,
+
+    "BASS      : " +
+      floor(
+        bassEnergy
+      ),
+
+    "MID       : " +
+      floor(
+        midEnergy
+      ),
+
+    "TREBLE    : " +
+      floor(
+        highEnergy
+      ),
+
+    "MIC       : PARABOLIC A"
+
+  ];
+
+
+  for (
+    let i = 0;
+    i < data.length;
+    i++
+  ) {
+
+    text(
+      data[i],
+      40,
+      105 + i * 12
+    );
+
+  }
+
+}
+
+
+// ============================================================
+// CLASSIFICATION BOXES
+// ============================================================
+
+function drawClassification() {
+
+  noFill();
+
+  stroke(80);
+
+
+  randomSeed(
+    patternSeed * 500
+  );
+
+
+  for (
+    let i = 0;
+    i < 8;
+    i++
+  ) {
+
+    // Safe position
+
+    let x =
+      random(
+        120,
+        max(
+          121,
+          width - 180
+        )
+      );
+
+
+    let y =
+      random(
+        150,
+        max(
+          151,
+          height - 180
+        )
+      );
+
+
+    // Compact box
+
+    let size =
+      random(
+        45,
+        85
+      );
+
+
+    // Subtle audio scaling
+
+    let audioScale =
+      map(
+        midEnergy,
+        0,
+        255,
+        0.85,
+        1.15
+      );
+
+
+    size *=
+      audioScale;
+
+
+    size =
+      constrain(
+        size,
+        40,
+        95
+      );
+
+
+    let boxWidth =
+      size;
+
+
+    let boxHeight =
+      size *
+      random(
+        0.85,
+        1.15
+      );
+
+
+    boxWidth =
+      constrain(
+        boxWidth,
+        40,
+        95
+      );
+
+
+    boxHeight =
+      constrain(
+        boxHeight,
+        35,
+        105
+      );
+
+
+    // Keep boxes on screen
+
+    x =
+      constrain(
+        x,
+        5,
+        width -
+          boxWidth -
+          5
+      );
+
+
+    y =
+      constrain(
+        y,
+        30,
+        height -
+          boxHeight -
+          5
+      );
+
+
+    rect(
+      x,
+      y,
+      boxWidth,
+      boxHeight
+    );
+
+
+    noStroke();
+
+    fill(60);
+
+    textSize(8);
+
+
+    text(
+      "REGION " + i,
+      x + 4,
+      y - 4
+    );
+
+
+    stroke(80);
+
+    noFill();
+
+  }
+
+}
+
+
+// ============================================================
+// DIAGNOSTIC TEXT
+// ============================================================
+
+function drawDiagnostics() {
+
+  let labels = [
+
+    "UNKNOWN",
+    "IMPULSE",
+    "CONTINUOUS",
+    "BAT?",
+    "MECHANICAL",
+    "MASKED",
+    "CLIPPED",
+    "ULTRASONIC",
+    "UNCLASSIFIED",
+    "REJECTED"
+
+  ];
+
+
+  fill(120);
+
+  noStroke();
+
+  textSize(7);
+
+
+  randomSeed(
+    patternSeed * 900
+  );
+
+
+  let diagnosticAmount =
+    floor(
+      map(
+        highEnergy,
+        0,
+        255,
+        20,
+        70
+      )
+    );
+
+
+  for (
+    let i = 0;
+    i < diagnosticAmount;
+    i++
+  ) {
+
+    text(
+      random(labels),
+      random(width),
+      random(height)
+    );
+
+  }
+
+}
+
+
+// ============================================================
+// CONFIDENCE MARKERS
+// ============================================================
+
+function drawConfidence() {
+
+  strokeWeight(0.5);
+
+
+  for (
+    let e of events
+  ) {
+
+    if (
+      e.conf > 0.8
+    ) {
+
+      stroke(0);
+
+
+      line(
+        e.x - 4,
+        e.y,
+        e.x + 4,
+        e.y
+      );
+
+
+      line(
+        e.x,
+        e.y - 4,
+        e.x,
+        e.y + 4
+      );
+
+    }
+
+  }
+
+}
+
+
+// ============================================================
+// CLICK = PLAY / PAUSE
+// ============================================================
+
+function mousePressed() {
+
+  userStartAudio();
+
+
+  if (
+    sound.isPlaying()
+  ) {
+
+    sound.pause();
+
+  } else {
+
+    sound.loop();
+
+  }
+
+}
+
+
+// ============================================================
+// RESIZE WITH WINDOW
+// ============================================================
+
+function windowResized() {
+
+  let canvasWidth =
+    min(
+      1300,
+      windowWidth - 20
+    );
+
+
+  let canvasHeight =
+    min(
+      900,
+      windowHeight - 20
+    );
+
+
+  resizeCanvas(
+    canvasWidth,
+    canvasHeight
+  );
+
+}
+
+</script>
+
+</body>
+
+</html>

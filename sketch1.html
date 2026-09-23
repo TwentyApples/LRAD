@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <title>Ultrasonic Survey 04</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/p5.min.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/addons/p5.sound.min.js"></script>
+
+</head>
+
+<body>
+
+<script>
+
+//   ENTIRE CODE 1 HERE
+
+//WEBSITE CODE - AUDIO REACTIVE MAP
+
+// ============================================================
+// ULTRASONIC SURVEY 04
+// AUDIO-REACTIVE GENERATIVE ARCHIVE
+//
+// 1600 x 900 LANDSCAPE
+//
+// CLICK = PLAY / PAUSE
+// R     = NEW VISUAL
+//
+// AUDIO:
+// whiteminiature.wav
+// ============================================================
+
+
+// ============================================================
+// CANVAS
+// ============================================================
+
+let cell = 8;
+let cols;
+let rows;
+
+let events = [];
+
+
+// ============================================================
+// AUDIO
+// ============================================================
+
+let sound;
+let fft;
+let amplitude;
+
+let audioStarted = false;
+
+let currentEnergy = 0;
+let previousEnergy = 0;
+
+let audioFloor = 0;
+let audioPeak = 0;
+
+let normalizedEnergy = 0;
+let attack = 0;
+
+let framesSinceHit = 999;
+
+
+// ============================================================
+// AUDIO SENSITIVITY
+// ============================================================
+
+const HIT_THRESHOLD = 0.22;
+
+const ATTACK_THRESHOLD = 0.004;
+
+const MIN_TIME_BETWEEN_HITS = 10;
+
+
+// ============================================================
+// GENERATION
+// ============================================================
+
+let generationSeed = 1;
+
+
+// ============================================================
+// PRELOAD
+// ============================================================
+
+function preload() {
+
+  sound = loadSound(
+    "whiteminiature.mp3"
+  );
+
+}
+
+
+// ============================================================
+// SETUP
+// ============================================================
+
+function setup() {
+
+  createCanvas(
+    1600,
+    900
+  );
+
+  cols =
+    floor(
+      width / cell
+    );
+
+  rows =
+    floor(
+      height / cell
+    );
+
+
+  fft =
+    new p5.FFT(
+      0.90,
+      1024
+    );
+
+
+  amplitude =
+    new p5.Amplitude();
+
+
+  generationSeed =
+    floor(
+      random(999999)
+    );
+
+
+  generateImage();
+
+}
+
+
+// ============================================================
+// DRAW
+// ============================================================
+
+function draw() {
+
+  updateAudio();
+
+  drawPlayPauseText();
+
+}
+
+
+// ============================================================
+// AUDIO ANALYSIS
+// ============================================================
+
+function updateAudio() {
+
+  if (
+    !audioStarted ||
+    !sound ||
+    !sound.isPlaying()
+  ) {
+
+    return;
+
+  }
+
+
+  fft.analyze();
+
+
+  // ----------------------------------------------------------
+  // OVERALL ENERGY
+  // ----------------------------------------------------------
+
+  const overall =
+    fft.getEnergy(
+      20,
+      12000
+    ) / 255;
+
+
+  // ----------------------------------------------------------
+  // BASS
+  // ----------------------------------------------------------
+
+  const bass =
+    fft.getEnergy(
+      30,
+      250
+    ) / 255;
+
+
+  // ----------------------------------------------------------
+  // MID
+  // ----------------------------------------------------------
+
+  const mid =
+    fft.getEnergy(
+      250,
+      3000
+    ) / 255;
+
+
+  // ----------------------------------------------------------
+  // COMBINED ENERGY
+  // ----------------------------------------------------------
+
+  currentEnergy =
+    constrain(
+      overall * 0.60 +
+      bass * 0.30 +
+      mid * 0.10,
+      0,
+      1
+    );
+
+
+  // ----------------------------------------------------------
+  // ADAPTIVE FLOOR
+  // ----------------------------------------------------------
+
+  if (
+    audioFloor === 0
+  ) {
+
+    audioFloor =
+      currentEnergy;
+
+  }
+
+
+  audioFloor =
+    lerp(
+      audioFloor,
+      currentEnergy,
+      0.004
+    );
+
+
+  // ----------------------------------------------------------
+  // PEAK TRACKER
+  // ----------------------------------------------------------
+
+  audioPeak =
+    max(
+      audioPeak * 0.997,
+      currentEnergy
+    );
+
+
+  // ----------------------------------------------------------
+  // NORMALISE
+  // ----------------------------------------------------------
+
+  const range =
+    max(
+      audioPeak -
+      audioFloor,
+      0.001
+    );
+
+
+  normalizedEnergy =
+    constrain(
+      (
+        currentEnergy -
+        audioFloor
+      ) /
+      range,
+      0,
+      1
+    );
+
+
+  // ----------------------------------------------------------
+  // ATTACK
+  // ----------------------------------------------------------
+
+  attack =
+    currentEnergy -
+    previousEnergy;
+
+
+  // ----------------------------------------------------------
+  // HIT DETECTION
+  // ----------------------------------------------------------
+
+  const loudEnough =
+    normalizedEnergy >
+    HIT_THRESHOLD;
+
+
+  const sharpEnough =
+    attack >
+    ATTACK_THRESHOLD;
+
+
+  const cooldownFinished =
+    framesSinceHit >
+    MIN_TIME_BETWEEN_HITS;
+
+
+  if (
+    loudEnough &&
+    sharpEnough &&
+    cooldownFinished
+  ) {
+
+    triggerNewImage();
+
+  }
+
+
+  // ----------------------------------------------------------
+  // UPDATE PREVIOUS ENERGY
+  // ----------------------------------------------------------
+
+  previousEnergy =
+    lerp(
+      previousEnergy,
+      currentEnergy,
+      0.35
+    );
+
+
+  framesSinceHit++;
+
+}
+
+
+// ============================================================
+// PLAY / PAUSE
+// ============================================================
+
+function mousePressed() {
+
+  toggleAudio();
+
+}
+
+
+function keyPressed() {
+
+  if (
+    key === " "
+  ) {
+
+    toggleAudio();
+
+  }
+
+
+  if (
+    key === "r" ||
+    key === "R"
+  ) {
+
+    triggerNewImage();
+
+  }
+
+}
+
+
+function toggleAudio() {
+
+  if (
+    !sound ||
+    !sound.isLoaded()
+  ) {
+
+    console.log(
+      "Audio has not loaded."
+    );
+
+    return;
+
+  }
+
+
+  userStartAudio();
+
+
+  // ----------------------------------------------------------
+  // PLAYING → PAUSE
+  // ----------------------------------------------------------
+
+  if (
+    sound.isPlaying()
+  ) {
+
+    sound.pause();
+
+    audioStarted = false;
+
+  }
+
+
+  // ----------------------------------------------------------
+  // PAUSED → PLAY
+  // ----------------------------------------------------------
+
+  else {
+
+    sound.loop();
+
+    fft.setInput(
+      sound
+    );
+
+    amplitude.setInput(
+      sound
+    );
+
+    audioStarted = true;
+
+
+    // Reset detector
+
+    previousEnergy = 0;
+
+    audioFloor = 0;
+
+    audioPeak = 0;
+
+    framesSinceHit = 999;
+
+  }
+
+}
+
+
+// ============================================================
+// PLAY / PAUSE TEXT
+// ============================================================
+
+function drawPlayPauseText() {
+
+  push();
+
+  noStroke();
+
+  fill(0);
+
+  textSize(10);
+
+  textAlign(
+    RIGHT,
+    TOP
+  );
+
+
+  if (
+    sound &&
+    sound.isPlaying()
+  ) {
+
+    text(
+      "CLICK TO PAUSE",
+      width - 40,
+      40
+    );
+
+  }
+
+  else {
+
+    text(
+      "CLICK TO PLAY",
+      width - 40,
+      40
+    );
+
+  }
+
+
+  pop();
+
+}
+
+
+// ============================================================
+// GENERATE NEW IMAGE
+// ============================================================
+
+function triggerNewImage() {
+
+  framesSinceHit = 0;
+
+
+  generationSeed =
+    floor(
+      random(999999)
+    );
+
+
+  generateImage();
+
+
+  console.log(
+    "NEW CONFIGURATION",
+    generationSeed
+  );
+
+}
+
+
+// ============================================================
+// MAIN GENERATIVE IMAGE
+// ============================================================
+
+function generateImage() {
+
+  randomSeed(
+    generationSeed
+  );
+
+  noiseSeed(
+    generationSeed
+  );
+
+
+  // ==========================================================
+  // PURE WHITE BACKGROUND
+  // ==========================================================
+
+  background(255);
+
+
+  events = [];
+
+
+  // ==========================================================
+  // GRID
+  // ==========================================================
+
+  stroke(220);
+
+  strokeWeight(1);
+
+
+  for (
+    let x = 0;
+    x < cols;
+    x++
+  ) {
+
+    line(
+      x * cell,
+      0,
+      x * cell,
+      height
+    );
+
+  }
+
+
+  for (
+    let y = 0;
+    y < rows;
+    y++
+  ) {
+
+    line(
+      0,
+      y * cell,
+      width,
+      y * cell
+    );
+
+  }
+
+
+  // ==========================================================
+  // BLACK STRUCTURES
+  // ==========================================================
+
+  noStroke();
+
+  fill(25);
+
+
+  for (
+    let i = 0;
+    i < 45;
+    i++
+  ) {
+
+    const x =
+      floor(
+        random(cols)
+      );
+
+    const y =
+      floor(
+        random(rows)
+      );
+
+    const w =
+      floor(
+        random(2, 6)
+      );
+
+    const h =
+      floor(
+        random(5, 18)
+      );
+
+
+    rect(
+      x * cell,
+      y * cell,
+      w * cell,
+      h * cell
+    );
+
+  }
+
+
+  // ==========================================================
+  // ULTRASONIC DETECTIONS
+  // ==========================================================
+
+  fill(0);
+
+
+  for (
+    let i = 0;
+    i < 2400;
+    i++
+  ) {
+
+    const x =
+      floor(
+        random(cols)
+      );
+
+    const y =
+      floor(
+        random(rows)
+      );
+
+
+    if (
+      noise(
+        x * 0.05,
+        y * 0.02
+      ) > 0.56
+    ) {
+
+      rect(
+        x * cell,
+        y * cell,
+        cell,
+        cell
+      );
+
+
+      events.push({
+
+        x:
+          x * cell +
+          cell / 2,
+
+        y:
+          y * cell +
+          cell / 2,
+
+        freq:
+          random(
+            20,
+            96
+          ),
+
+        amp:
+          random(
+            -70,
+            -18
+          ),
+
+        conf:
+          random(
+            0.2,
+            1
+          )
+
+      });
+
+    }
+
+  }
+
+
+  // ==========================================================
+  // RED EVENTS
+  // ==========================================================
+
+  fill(
+    220,
+    40,
+    40
+  );
+
+
+  for (
+    let i = 0;
+    i < 320;
+    i++
+  ) {
+
+    const x =
+      floor(
+        random(cols)
+      );
+
+    const y =
+      floor(
+        random(rows)
+      );
+
+
+    if (
+      noise(
+        x * 0.08,
+        y * 0.08
+      ) > 0.62
+    ) {
+
+      rect(
+        x * cell,
+        y * cell,
+        cell,
+        cell
+      );
+
+
+      events.push({
+
+        x:
+          x * cell +
+          cell / 2,
+
+        y:
+          y * cell +
+          cell / 2,
+
+        freq:
+          random(
+            20,
+            96
+          ),
+
+        amp:
+          random(
+            -70,
+            -18
+          ),
+
+        conf:
+          random(
+            0.2,
+            1
+          )
+
+      });
+
+    }
+
+  }
+
+
+  // ==========================================================
+  // CONNECTION LINES
+  // ==========================================================
+
+  stroke(40);
+
+  strokeWeight(0.6);
+
+
+  for (
+    let i = 0;
+    i < events.length;
+    i++
+  ) {
+
+    const a =
+      events[i];
+
+
+    for (
+      let j = i + 1;
+      j < events.length;
+      j++
+    ) {
+
+      const b =
+        events[j];
+
+
+      const d =
+        dist(
+          a.x,
+          a.y,
+          b.x,
+          b.y
+        );
+
+
+      if (
+        d < 80 &&
+        random() < 0.03
+      ) {
+
+        line(
+          a.x,
+          a.y,
+          b.x,
+          b.y
+        );
+
+      }
+
+    }
+
+  }
+
+
+  // ==========================================================
+  // TECHNICAL CALLOUTS
+  // ==========================================================
+
+  textSize(8);
+
+  fill(40);
+
+
+  for (
+    let i = 0;
+    i < 18;
+    i++
+  ) {
+
+    if (
+      events.length === 0
+    ) {
+
+      break;
+
+    }
+
+
+    const e =
+      random(events);
+
+
+    stroke(120);
+
+    strokeWeight(0.5);
+
+
+    const lx =
+      e.x +
+      random(
+        25,
+        70
+      );
+
+
+    const ly =
+      e.y -
+      random(
+        15,
+        40
+      );
+
+
+    line(
+      e.x,
+      e.y,
+      lx,
+      ly
+    );
+
+
+    noStroke();
+
+
+    text(
+      nf(
+        e.freq,
+        2,
+        1
+      ) +
+      " kHz",
+
+      lx + 3,
+      ly - 8
+    );
+
+
+    text(
+      "AMP " +
+      floor(
+        e.amp
+      ) +
+      " dB",
+
+      lx + 3,
+      ly
+    );
+
+
+    text(
+      "ID " +
+      floor(
+        random(
+          1000,
+          9999
+        )
+      ),
+
+      lx + 3,
+      ly + 8
+    );
+
+  }
+
+
+  // ==========================================================
+  // FREQUENCY RULER
+  // ==========================================================
+
+  stroke(0);
+
+
+  for (
+    let i = 20;
+    i <= 100;
+    i += 5
+  ) {
+
+    const x =
+      map(
+        i,
+        20,
+        100,
+        80,
+        width - 80
+      );
+
+
+    line(
+      x,
+      30,
+      x,
+      40
+    );
+
+
+    if (
+      i % 10 === 0
+    ) {
+
+      textAlign(
+        CENTER
+      );
+
+      noStroke();
+
+      fill(0);
+
+
+      text(
+        i + " kHz",
+        x,
+        22
+      );
+
+
+      stroke(0);
+
+    }
+
+  }
+
+
+  // ==========================================================
+  // METADATA
+  // ==========================================================
+
+  fill(0);
+
+  textAlign(
+    LEFT
+  );
+
+  textSize(10);
+
+
+  text(
+    "ULTRASONIC ARCHIVE",
+    40,
+    70
+  );
+
+
+  text(
+    "------------------------------",
+    40,
+    82
+  );
+
+
+  text(
+    "FILE      : UA_0190",
+    100,
+    100
+  );
+
+
+  text(
+    "DEVICE    : UXR-04",
+    100,
+    112
+  );
+
+
+  text(
+    "DATE      : 25 APR 2026",
+    100,
+    124
+  );
+
+
+  text(
+    "LOCATION  : GRID B34",
+    100,
+    136
+  );
+
+
+  text(
+    "DURATION  : 00:23:32",
+    100,
+    148
+  );
+
+
+  text(
+    "BAND      : 20–96 kHz",
+    100,
+    160
+  );
+
+
+  text(
+    "EVENTS    : " +
+    events.length,
+    100,
+    172
+  );
+
+
+  text(
+    "UNKNOWN   : 133",
+    100,
+    184
+  );
+
+
+  text(
+    "MIC       : PARABOLIC A",
+    100,
+    196
+  );
+
+
+  // ==========================================================
+  // GENERATIVE STATE
+  // ==========================================================
+
+  text(
+    "GENERATIVE STATE",
+    620,
+    70
+  );
+
+
+  text(
+    "------------------------------",
+    620,
+    82
+  );
+
+
+  text(
+    "SEED      : " +
+    generationSeed,
+    680,
+    100
+  );
+
+
+  text(
+    "MODE      : EVENT-DRIVEN",
+    680,
+    112
+  );
+
+
+  text(
+    "TRIGGER   : PERCUSSIVE",
+    680,
+    124
+  );
+
+
+  text(
+    "SENSITIVITY : 0.22",
+    680,
+    136
+  );
+
+
+  // ==========================================================
+  // CLASSIFICATION BOXES
+  // ==========================================================
+
+  noFill();
+
+  stroke(80);
+
+  strokeWeight(1);
+
+
+  for (
+    let i = 0;
+    i < 8;
+    i++
+  ) {
+
+    const x =
+      random(
+        120,
+        width - 250
+      );
+
+
+    const y =
+      random(
+        250,
+        height - 150
+      );
+
+
+    const w =
+      random(
+        60,
+        140
+      );
+
+
+    const h =
+      random(
+        35,
+        90
+      );
+
+
+    rect(
+      x,
+      y,
+      w,
+      h
+    );
+
+
+    noStroke();
+
+    fill(60);
+
+    textSize(8);
+
+
+    text(
+      "REGION " + i,
+      x + 4,
+      y - 4
+    );
+
+
+    stroke(80);
+
+    noFill();
+
+  }
+
+
+  // ==========================================================
+  // DIAGNOSTIC TEXT
+  // ==========================================================
+
+  const labels = [
+
+    "UNKNOWN",
+    "IMPULSE",
+    "CONTINUOUS",
+    "BAT?",
+    "MECHANICAL",
+    "MASKED",
+    "CLIPPED",
+    "ULTRASONIC",
+    "UNCLASSIFIED",
+    "REJECTED"
+
+  ];
+
+
+  fill(120);
+
+  noStroke();
+
+  textSize(7);
+
+
+  for (
+    let i = 0;
+    i < 55;
+    i++
+  ) {
+
+    text(
+      random(labels),
+
+      random(
+        width
+      ),
+
+      random(
+        230,
+        height
+      )
+    );
+
+  }
+
+
+  // ==========================================================
+  // CONFIDENCE MARKERS
+  // ==========================================================
+
+  strokeWeight(0.5);
+
+
+  for (
+    const e of events
+  ) {
+
+    if (
+      e.conf > 0.8
+    ) {
+
+      stroke(0);
+
+
+      line(
+        e.x - 4,
+        e.y,
+        e.x + 4,
+        e.y
+      );
+
+
+      line(
+        e.x,
+        e.y - 4,
+        e.x,
+        e.y + 4
+      );
+
+    }
+
+  }
+
+
+  // ==========================================================
+  // TITLE
+  // ==========================================================
+
+  fill(0);
+
+  noStroke();
+
+  textSize(11);
+
+
+  text(
+    "ULTRASONIC SURVEY 04",
+    40,
+    40
+  );
+
+
+  text(
+    "20–96 kHz",
+    40,
+    58
+  );
+
+
+  text(
+    "DEVICE : UXR-04",
+    200,
+    94
+  );
+
+
+  // ==========================================================
+  // TIME LABEL
+  // ==========================================================
+
+  push();
+
+  translate(
+    18,
+    height / 2
+  );
+
+  rotate(
+    -HALF_PI
+  );
+
+
+  text(
+    "TIME",
+    0,
+    0
+  );
+
+
+  pop();
+
+
+  // ==========================================================
+  // BOTTOM LINE
+  // ==========================================================
+
+  stroke(0);
+
+  strokeWeight(0.7);
+
+
+  line(
+    40,
+    height - 55,
+    width - 40,
+    height - 55
+  );
+
+
+  noStroke();
+
+  fill(0);
+
+  textSize(8);
+
+
+  text(
+    "ULTRASONIC ARCHIVE / EVENT-DRIVEN GENERATIVE FIELD",
+    40,
+    height - 35
+  );
+
+
+  textAlign(
+    RIGHT
+  );
+
+
+  text(
+    "UA_0190",
+    width - 40,
+    height - 35
+  );
+
+
+  textAlign(
+    LEFT
+  );
+
+}
+
+
+
+
+</script>
+
+</body>
+
+</html>

@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Network Audio Reactive</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/p5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/addons/p5.sound.min.js"></script>
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #141414;
+    }
+
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+
+<script>
+
+// PASTE THE ENTIRE SUNMOON NETWORK SKETCH HERE
+
+//WEBSITE CODE - MAP THING
+
+let nodes = [];
+let links = [];
+
+let song;
+let fft;
+
+let audioStarted = false;
+let audioEnabled = false;
+
+let previousSpectrum = [];
+let averageEnergy = 0;
+let currentEnergy = 0;
+
+let beatCooldown = 0;
+let glitchAmount = 0;
+let beatFlash = 0;
+
+
+// ==================================================
+// AUDIO
+// ==================================================
+
+function preload() {
+  song = loadSound("sunmoon.mp3");
+}
+
+
+// ==================================================
+// SETUP
+// ==================================================
+
+function setup() {
+
+  createResponsiveCanvas();
+
+  fft = new p5.FFT(0.75, 256);
+  fft.setInput(song);
+
+  generateNetwork();
+
+  // Start with an empty canvas.
+  redraw();
+}
+
+
+// ==================================================
+// RESPONSIVE LANDSCAPE CANVAS
+// ==================================================
+
+function createResponsiveCanvas() {
+
+  let w = windowWidth;
+  let h = windowHeight;
+
+  // Landscape composition.
+  if (w / h < 1.5) {
+    h = w / 1.5;
+  }
+
+  createCanvas(w, h);
+
+  pixelDensity(1);
+}
+
+
+// ==================================================
+// GENERATE NETWORK
+// ==================================================
+
+function generateNetwork() {
+
+  nodes = [];
+  links = [];
+
+
+  // ------------------------------------------------
+  // CLUSTERED NODES
+  // ------------------------------------------------
+
+  for (let i = 0; i < 18; i++) {
+
+    let cx = random(
+      width * 0.4,
+      width
+    );
+
+    let cy = random(height);
+
+
+    for (
+      let j = 0;
+      j < random(6, 20);
+      j++
+    ) {
+
+      let x =
+        cx +
+        randomGaussian() * 60;
+
+      let y =
+        cy +
+        randomGaussian() * 60;
+
+
+      nodes.push({
+
+        x: x,
+        y: y,
+
+        baseX: x,
+        baseY: y,
+
+        vx: 0,
+        vy: 0,
+
+        id: floor(
+          random(10, 200)
+        ),
+
+        r: random([
+          8,
+          12,
+          20,
+          35,
+          50
+        ]),
+
+        type: floor(
+          random(3)
+        ),
+
+        glitch: 0
+      });
+    }
+  }
+
+
+  // ------------------------------------------------
+  // SPARSE NODES
+  // ------------------------------------------------
+
+  for (let i = 0; i < 80; i++) {
+
+    let x = random(width);
+    let y = random(height);
+
+
+    nodes.push({
+
+      x: x,
+      y: y,
+
+      baseX: x,
+      baseY: y,
+
+      vx: 0,
+      vy: 0,
+
+      id: floor(
+        random(10, 200)
+      ),
+
+      r: random([
+        8,
+        12
+      ]),
+
+      type: 0,
+
+      glitch: 0
+    });
+  }
+
+
+  generateLinks();
+}
+
+
+// ==================================================
+// GENERATE LINKS
+// ==================================================
+
+function generateLinks() {
+
+  links = [];
+
+
+  for (let i = 0; i < 300; i++) {
+
+    let a =
+      floor(
+        random(nodes.length)
+      );
+
+    let b =
+      floor(
+        random(nodes.length)
+      );
+
+
+    if (a === b) {
+      continue;
+    }
+
+
+    let d = dist(
+      nodes[a].x,
+      nodes[a].y,
+      nodes[b].x,
+      nodes[b].y
+    );
+
+
+    if (
+      d < width * 0.10
+    ) {
+
+      links.push([
+        a,
+        b
+      ]);
+    }
+  }
+}
+
+
+// ==================================================
+// DRAW
+// ==================================================
+
+function draw() {
+
+  background(20);
+
+  updateAudio();
+
+  updateNodes();
+
+  drawGrid();
+
+  drawLinks();
+
+  drawNodes();
+
+  drawNoise();
+
+  drawBeatFlash();
+
+  drawAudioIndicator();
+}
+
+
+// ==================================================
+// AUDIO ANALYSIS
+// ==================================================
+
+function updateAudio() {
+
+  if (
+    !audioEnabled ||
+    !song ||
+    !song.isPlaying()
+  ) {
+
+    currentEnergy *= 0.92;
+
+    return;
+  }
+
+
+  let spectrum =
+    fft.analyze();
+
+
+  // ------------------------------------------------
+  // OVERALL VOLUME
+  // ------------------------------------------------
+
+  let bass =
+    fft.getEnergy(
+      35,
+      120
+    );
+
+
+  let lowMid =
+    fft.getEnergy(
+      120,
+      300
+    );
+
+
+  let overall =
+    fft.getEnergy(
+      40,
+      5000
+    );
+
+
+  // Bass and low-mid are weighted more heavily
+  // because they tend to represent the rhythmic
+  // structure.
+
+  let energy =
+    bass * 0.55 +
+    lowMid * 0.25 +
+    overall * 0.20;
+
+
+  // Smooth the visible energy.
+
+  currentEnergy =
+    lerp(
+      currentEnergy,
+      energy,
+      0.25
+    );
+
+
+  averageEnergy =
+    lerp(
+      averageEnergy,
+      energy,
+      0.025
+    );
+
+
+  // ------------------------------------------------
+  // SPECTRAL FLUX
+  // ------------------------------------------------
+
+  let flux = 0;
+
+
+  if (
+    previousSpectrum.length ===
+    spectrum.length
+  ) {
+
+    for (
+      let i = 2;
+      i < spectrum.length * 0.45;
+      i++
+    ) {
+
+      let difference =
+        spectrum[i] -
+        previousSpectrum[i];
+
+
+      if (difference > 0) {
+        flux += difference;
+      }
+    }
+  }
+
+
+  previousSpectrum =
+    spectrum.slice();
+
+
+  // ------------------------------------------------
+  // PERCUSSION DETECTION
+  // ------------------------------------------------
+
+  let energyRise =
+    energy -
+    averageEnergy;
+
+
+  let isPercussive =
+    flux > 18 &&
+    energyRise > 5;
+
+
+  let strongBassHit =
+    bass > 115 &&
+    energyRise > 3;
+
+
+  if (
+    (isPercussive ||
+      strongBassHit) &&
+    beatCooldown <= 0
+  ) {
+
+    triggerBeat(
+      energy,
+      flux
+    );
+
+    beatCooldown = 7;
+  }
+
+
+  if (
+    beatCooldown > 0
+  ) {
+
+    beatCooldown--;
+  }
+}
+
+
+// ==================================================
+// BEAT RESPONSE
+// ==================================================
+
+function triggerBeat(
+  energy,
+  flux
+) {
+
+  let strength =
+    map(
+      energy,
+      40,
+      220,
+      0.15,
+      1,
+      true
+    );
+
+
+  let fluxStrength =
+    map(
+      flux,
+      15,
+      100,
+      0.15,
+      1,
+      true
+    );
+
+
+  strength =
+    max(
+      strength,
+      fluxStrength
+    );
+
+
+  glitchAmount =
+    map(
+      strength,
+      0.15,
+      1,
+      2,
+      25,
+      true
+    );
+
+
+  beatFlash =
+    map(
+      strength,
+      0.15,
+      1,
+      15,
+      100,
+      true
+    );
+
+
+  // ------------------------------------------------
+  // NODE IMPULSE
+  // ------------------------------------------------
+
+  for (let n of nodes) {
+
+    if (
+      random() < 0.75
+    ) {
+
+      let angle =
+        random(TWO_PI);
+
+
+      let force =
+        random(
+          0.5,
+          glitchAmount
+        );
+
+
+      n.vx +=
+        cos(angle) * force;
+
+      n.vy +=
+        sin(angle) * force;
+
+
+      n.glitch =
+        random(
+          3,
+          glitchAmount
+        );
+    }
+  }
+
+
+  // ------------------------------------------------
+  // NETWORK RECONFIGURATION
+  // ------------------------------------------------
+
+  if (
+    strength > 0.4 &&
+    random() < 0.25
+  ) {
+
+    generateLinks();
+  }
+
+
+  // ------------------------------------------------
+  // BIG HITS
+  // ------------------------------------------------
+
+  if (
+    strength > 0.8 &&
+    random() < 0.2
+  ) {
+
+    largeGlitch();
+  }
+}
+
+
+// ==================================================
+// LARGE GLITCH
+// ==================================================
+
+function largeGlitch() {
+
+  for (let n of nodes) {
+
+    if (
+      random() < 0.3
+    ) {
+
+      n.x += random(
+        -70,
+        70
+      );
+
+      n.y += random(
+        -70,
+        70
+      );
+
+
+      n.vx += random(
+        -10,
+        10
+      );
+
+      n.vy += random(
+        -10,
+        10
+      );
+    }
+  }
+
+
+  generateLinks();
+}
+
+
+// ==================================================
+// NODE MOVEMENT
+// ==================================================
+
+function updateNodes() {
+
+  // No movement at all unless a beat has
+  // triggered a glitch.
+
+  if (
+    glitchAmount <= 0.05
+  ) {
+    return;
+  }
+
+
+  for (let n of nodes) {
+
+    // Random displacement.
+
+    if (
+      n.glitch > 0.1
+    ) {
+
+      n.x += random(
+        -n.glitch,
+        n.glitch
+      );
+
+      n.y += random(
+        -n.glitch,
+        n.glitch
+      );
+
+
+      n.glitch *= 0.78;
+    }
+
+
+    // Momentum.
+
+    n.x += n.vx;
+    n.y += n.vy;
+
+
+    // Friction.
+
+    n.vx *= 0.80;
+    n.vy *= 0.80;
+
+
+    // Boundaries.
+
+    if (
+      n.x < 0
+    ) {
+
+      n.x = 0;
+      n.vx *= -0.5;
+    }
+
+
+    if (
+      n.x > width
+    ) {
+
+      n.x = width;
+      n.vx *= -0.5;
+    }
+
+
+    if (
+      n.y < 0
+    ) {
+
+      n.y = 0;
+      n.vy *= -0.5;
+    }
+
+
+    if (
+      n.y > height
+    ) {
+
+      n.y = height;
+      n.vy *= -0.5;
+    }
+  }
+
+
+  glitchAmount *= 0.87;
+
+
+  if (
+    glitchAmount < 0.05
+  ) {
+
+    glitchAmount = 0;
+
+
+    for (let n of nodes) {
+
+      n.vx = 0;
+      n.vy = 0;
+      n.glitch = 0;
+    }
+  }
+}
+
+
+// ==================================================
+// GRID
+// ==================================================
+
+function drawGrid() {
+
+  stroke(
+    255,
+    18
+  );
+
+  strokeWeight(1);
+
+
+  let spacing =
+    max(
+      10,
+      width / 100
+    );
+
+
+  for (
+    let x = 0;
+    x < width;
+    x += spacing
+  ) {
+
+    line(
+      x,
+      0,
+      x,
+      height
+    );
+  }
+
+
+  for (
+    let y = 0;
+    y < height;
+    y += spacing
+  ) {
+
+    line(
+      0,
+      y,
+      width,
+      y
+    );
+  }
+}
+
+
+// ==================================================
+// LINKS
+// ==================================================
+
+function drawLinks() {
+
+  // Links also respond to volume.
+
+  let visibility =
+    map(
+      currentEnergy,
+      0,
+      150,
+      0,
+      55,
+      true
+    );
+
+
+  if (
+    visibility <= 0.5
+  ) {
+    return;
+  }
+
+
+  stroke(
+    255,
+    visibility
+  );
+
+  strokeWeight(0.5);
+
+
+  drawingContext.setLineDash([
+    4,
+    5
+  ]);
+
+
+  for (let l of links) {
+
+    let a =
+      nodes[l[0]];
+
+    let b =
+      nodes[l[1]];
+
+
+    // A link only exists visually if its
+    // endpoints are currently visible.
+
+    let aVisible =
+      nodeVisibility(a);
+
+    let bVisible =
+      nodeVisibility(b);
+
+
+    if (
+      aVisible <= 0 ||
+      bVisible <= 0
+    ) {
+      continue;
+    }
+
+
+    let ax = a.x;
+    let ay = a.y;
+
+    let bx = b.x;
+    let by = b.y;
+
+
+    // Beat distortion.
+
+    if (
+      glitchAmount > 1
+    ) {
+
+      ax += random(
+        -glitchAmount,
+        glitchAmount
+      );
+
+      ay += random(
+        -glitchAmount,
+        glitchAmount
+      );
+
+      bx += random(
+        -glitchAmount,
+        glitchAmount
+      );
+
+      by += random(
+        -glitchAmount,
+        glitchAmount
+      );
+    }
+
+
+    line(
+      ax,
+      ay,
+      bx,
+      by
+    );
+  }
+
+
+  drawingContext.setLineDash([]);
+}
+
+
+// ==================================================
+// NODE VISIBILITY
+// ==================================================
+
+function nodeVisibility(n) {
+
+  // Convert audio energy into a 0-1 visibility
+  // value.
+  //
+  // Below ~8 = completely invisible.
+  // Around 40-60 = progressively appearing.
+  // 100+ = almost everything visible.
+
+  return map(
+    currentEnergy,
+    8,
+    110,
+    0,
+    1,
+    true
+  );
+}
+
+
+// ==================================================
+// NODES
+// ==================================================
+
+function drawNodes() {
+
+  let visibility =
+    nodeVisibility(
+      nodes[0]
+    );
+
+
+  // Silence = absolutely no nodes.
+
+  if (
+    visibility <= 0
+  ) {
+    return;
+  }
+
+
+  noFill();
+
+  stroke(
+    255,
+    255 * visibility
+  );
+
+
+  textFont(
+    "monospace"
+  );
+
+  textSize(8);
+
+
+  // Determine how many nodes should be visible.
+
+  let visibleCount =
+    floor(
+      nodes.length *
+      visibility
+    );
+
+
+  // Shuffle visually by using a deterministic-ish
+  // random selection each frame.
+
+  for (
+    let i = 0;
+    i < nodes.length;
+    i++
+  ) {
+
+    let n =
+      nodes[i];
+
+
+    // Higher energy reveals more nodes.
+
+    let threshold =
+      i / nodes.length;
+
+
+    if (
+      threshold > visibility
+    ) {
+      continue;
+    }
+
+
+    let x = n.x;
+    let y = n.y;
+
+
+    // Beat glitch.
+
+    if (
+      glitchAmount > 1 &&
+      random() < 0.25
+    ) {
+
+      x += random(
+        -glitchAmount,
+        glitchAmount
+      );
+
+      y += random(
+        -glitchAmount,
+        glitchAmount
+      );
+    }
+
+
+    // Crosshair.
+
+    if (
+      random() < 0.4
+    ) {
+
+      line(
+        x - 3,
+        y,
+        x + 3,
+        y
+      );
+
+      line(
+        x,
+        y - 3,
+        x,
+        y + 3
+      );
+    }
+
+
+    // Circle.
+
+    if (
+      random() < 0.25
+    ) {
+
+      ellipse(
+        x,
+        y,
+        n.r
+      );
+    }
+
+
+    // ID.
+
+    if (
+      random() < 0.3
+    ) {
+
+      text(
+        n.id,
+        x + 5,
+        y - 4
+      );
+    }
+
+
+    // Triangle.
+
+    if (
+      random() < 0.15
+    ) {
+
+      triangle(
+
+        x + 5,
+        y,
+
+        x + 10,
+        y - 2,
+
+        x + 10,
+        y + 2
+
+      );
+    }
+
+
+    // Beat ring.
+
+    if (
+      beatFlash > 5 &&
+      random() < 0.15
+    ) {
+
+      stroke(
+        255,
+        beatFlash *
+        visibility
+      );
+
+
+      ellipse(
+        x,
+        y,
+        n.r +
+        beatFlash * 0.3
+      );
+    }
+  }
+}
+
+
+// ==================================================
+// NOISE
+// ==================================================
+
+function drawNoise() {
+
+  // Noise also disappears with the audio.
+
+  let noiseVisibility =
+    map(
+      currentEnergy,
+      0,
+      100,
+      0,
+      1,
+      true
+    );
+
+
+  if (
+    noiseVisibility <= 0
+  ) {
+    return;
+  }
+
+
+  stroke(
+    255,
+    15 * noiseVisibility
+  );
+
+
+  let amount =
+    constrain(
+      width *
+      height *
+      0.004,
+      2500,
+      6000
+    );
+
+
+  // Less noise at low volume.
+
+  amount *= noiseVisibility;
+
+
+  for (
+    let i = 0;
+    i < amount;
+    i++
+  ) {
+
+    point(
+      random(width),
+      random(height)
+    );
+  }
+}
+
+
+// ==================================================
+// BEAT FLASH
+// ==================================================
+
+function drawBeatFlash() {
+
+  if (
+    beatFlash <= 0
+  ) {
+    return;
+  }
+
+
+  noFill();
+
+  stroke(
+    255,
+    beatFlash * 0.35
+  );
+
+  strokeWeight(2);
+
+
+  rect(
+    4,
+    4,
+    width - 8,
+    height - 8
+  );
+
+
+  beatFlash *= 0.82;
+}
+
+
+// ==================================================
+// AUDIO INDICATOR
+// ==================================================
+
+function drawAudioIndicator() {
+
+  noStroke();
+
+
+  if (
+    audioEnabled &&
+    song &&
+    song.isPlaying()
+  ) {
+
+    fill(
+      255,
+      180
+    );
+
+  } else {
+
+    fill(
+      255,
+      40
+    );
+  }
+
+
+  ellipse(
+    width - 20,
+    20,
+    6,
+    6
+  );
+}
+
+
+// ==================================================
+// MOUSE / TOUCH
+// ==================================================
+
+function mousePressed() {
+
+  toggleAudio();
+}
+
+
+function touchStarted() {
+
+  toggleAudio();
+
+  return false;
+}
+
+
+// ==================================================
+// AUDIO TOGGLE
+// ==================================================
+
+function toggleAudio() {
+
+  if (!song) {
+    return;
+  }
+
+
+  // First click.
+
+  if (!audioStarted) {
+
+    userStartAudio();
+
+    song.loop();
+
+    audioStarted = true;
+
+    audioEnabled = true;
+
+    loop();
+
+    return;
+  }
+
+
+  // Pause.
+
+  if (
+    song.isPlaying()
+  ) {
+
+    song.pause();
+
+    audioEnabled = false;
+
+    currentEnergy = 0;
+    averageEnergy = 0;
+    glitchAmount = 0;
+    beatFlash = 0;
+
+    previousSpectrum = [];
+
+
+    for (let n of nodes) {
+
+      n.vx = 0;
+      n.vy = 0;
+      n.glitch = 0;
+    }
+
+
+    redraw();
+
+    return;
+  }
+
+
+  // Resume.
+
+  song.loop();
+
+  audioEnabled = true;
+
+  currentEnergy = 0;
+  averageEnergy = 0;
+
+  previousSpectrum = [];
+
+  beatCooldown = 0;
+
+  loop();
+}
+
+
+// ==================================================
+// RESIZE
+// ==================================================
+
+function windowResized() {
+
+  let w = windowWidth;
+  let h = windowHeight;
+
+
+  if (
+    w / h < 1.5
+  ) {
+    h = w / 1.5;
+  }
+
+
+  resizeCanvas(
+    w,
+    h
+  );
+
+
+  generateNetwork();
+
+  redraw();
+}
+
+</script>
+
+</body>
+</html>
