@@ -1,0 +1,1192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Sketch 5</title>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/p5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/addons/p5.sound.min.js"></script>
+
+  <link rel="icon" type="image/png" href="favicon.png">
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+
+<script>
+
+// ============================================================
+// BRAILLE DOT FIELD — CONTROLLED PERCUSSIVE REACTION
+// p5.js + p5.sound
+//
+// LOWS  -> dot weight + heavy movement
+// MIDS  -> horizontal movement
+// HIGHS -> vertical movement + twitch
+// HITS  -> short, controlled burst across the field
+//
+// Put "shortenedvoicebreak.mp3" in the same folder.
+// Click anywhere to play / pause.
+// ============================================================
+
+let song;
+let amp;
+let fft;
+
+let cells = [];
+
+let cols;
+let rows;
+
+// ------------------------------------------------------------
+// AUDIO VALUES
+// ------------------------------------------------------------
+
+let low = 0;
+let mid = 0;
+let high = 0;
+let overall = 0;
+
+let highAttack = 0;
+let lowAttack = 0;
+let overallAttack = 0;
+
+let previousLow = 0;
+let previousHigh = 0;
+let previousOverall = 0;
+
+// ------------------------------------------------------------
+// PERCUSSIVE IMPACT
+// ------------------------------------------------------------
+
+let impact = 0;
+let lastImpact = 0;
+
+// ------------------------------------------------------------
+// VISUAL SETTINGS
+// ------------------------------------------------------------
+
+const CELL_W = 19;
+const CELL_H = 27;
+
+const BASE_DOT_SIZE = 2.0;
+
+// ============================================================
+// PRELOAD
+// ============================================================
+
+function preload() {
+  song = loadSound(
+    "shortenedvoicebreak.mp3"
+  );
+}
+
+// ============================================================
+// SETUP
+// ============================================================
+
+function setup() {
+  createCanvas(
+    windowWidth,
+    windowHeight
+  );
+
+  pixelDensity(1);
+
+  amp = new p5.Amplitude(0.9);
+
+  fft = new p5.FFT(
+    0.65,
+    256
+  );
+
+  createField();
+}
+
+// ============================================================
+// CREATE FIELD
+// ============================================================
+
+function createField() {
+  cells = [];
+
+  let scaleAmount =
+    getScale();
+
+  let cellW =
+    CELL_W * scaleAmount;
+
+  let cellH =
+    CELL_H * scaleAmount;
+
+  let marginX =
+    width * 0.055;
+
+  let marginY =
+    height * 0.055;
+
+  cols = floor(
+    (width - marginX * 2) /
+    cellW
+  );
+
+  rows = floor(
+    (height - marginY * 2) /
+    cellH
+  );
+
+  for (
+    let y = 0;
+    y < rows;
+    y++
+  ) {
+    for (
+      let x = 0;
+      x < cols;
+      x++
+    ) {
+      cells.push({
+        x: x,
+        y: y,
+
+        offsetX: 0,
+        offsetY: 0,
+
+        glitchX: 0,
+        glitchY: 0,
+
+        phase: random(TWO_PI),
+
+        sensitivity:
+          random(0.7, 1.35),
+
+        pattern:
+          createBraillePattern()
+      });
+    }
+  }
+}
+
+// ============================================================
+// BRAILLE-INSPIRED PATTERN
+// ============================================================
+//
+//     0 3
+//     1 4
+//     2 5
+//
+// Abstract six-dot structures.
+// ============================================================
+
+function createBraillePattern() {
+  let pattern = [];
+
+  let density =
+    random();
+
+  let probability;
+
+  if (
+    density < 0.18
+  ) {
+    probability = 0.28;
+  }
+  else if (
+    density < 0.65
+  ) {
+    probability = 0.48;
+  }
+  else {
+    probability = 0.64;
+  }
+
+  for (
+    let i = 0;
+    i < 6;
+    i++
+  ) {
+    pattern.push(
+      random() <
+      probability
+    );
+  }
+
+  // Never completely empty.
+  if (
+    !pattern.includes(true)
+  ) {
+    pattern[
+      floor(
+        random(6)
+      )
+    ] = true;
+  }
+
+  return pattern;
+}
+
+// ============================================================
+// DRAW
+// ============================================================
+
+function draw() {
+  background(255);
+
+  // ----------------------------------------------------------
+  // ANALYZE
+  // ----------------------------------------------------------
+
+  fft.analyze();
+
+  // ----------------------------------------------------------
+  // FREQUENCY BANDS
+  // ----------------------------------------------------------
+
+  let rawLow =
+    fft.getEnergy(
+      20,
+      160
+    ) / 255;
+
+  let rawMid =
+    fft.getEnergy(
+      160,
+      1800
+    ) / 255;
+
+  let rawHigh =
+    fft.getEnergy(
+      1800,
+      12000
+    ) / 255;
+
+  let rawOverall =
+    amp.getLevel();
+
+  // ----------------------------------------------------------
+  // DETECT FAST CHANGES
+  // ----------------------------------------------------------
+
+  lowAttack =
+    max(
+      0,
+      rawLow -
+      previousLow
+    );
+
+  highAttack =
+    max(
+      0,
+      rawHigh -
+      previousHigh
+    );
+
+  overallAttack =
+    max(
+      0,
+      rawOverall -
+      previousOverall
+    );
+
+  // ----------------------------------------------------------
+  // SMOOTH NORMAL MOVEMENT
+  // ----------------------------------------------------------
+
+  low =
+    lerp(
+      low,
+      rawLow,
+      0.22
+    );
+
+  mid =
+    lerp(
+      mid,
+      rawMid,
+      0.12
+    );
+
+  high =
+    lerp(
+      high,
+      rawHigh,
+      0.22
+    );
+
+  overall =
+    lerp(
+      overall,
+      rawOverall,
+      0.20
+    );
+
+  // ----------------------------------------------------------
+  // PERCUSSIVE HIT DETECTION
+  // ----------------------------------------------------------
+  //
+  // High-frequency attacks are especially important here.
+  // The thresholds stay sensitive, but the visual response
+  // below is deliberately restrained.
+  // ----------------------------------------------------------
+
+  let highHit =
+    highAttack >
+    0.045;
+
+  let bassHit =
+    lowAttack >
+    0.055;
+
+  let percussiveHit =
+    (
+      highHit &&
+      highAttack >
+      0.055
+    ) ||
+    (
+      highAttack >
+      0.035 &&
+      overallAttack >
+      0.025
+    ) ||
+    (
+      bassHit &&
+      overallAttack >
+      0.035
+    );
+
+  // ----------------------------------------------------------
+  // TRIGGER CONTROLLED IMPACT
+  // ----------------------------------------------------------
+
+  if (
+    percussiveHit &&
+    millis() -
+    lastImpact >
+    55
+  ) {
+    let hitStrength =
+      constrain(
+        highAttack * 5.5 +
+        lowAttack * 2.5 +
+        overallAttack * 2.0,
+        0,
+        2.5
+      );
+
+    // Much gentler than the previous version.
+    impact =
+      max(
+        impact,
+        0.35 +
+        hitStrength * 0.45
+      );
+
+    triggerPercussiveHit(
+      hitStrength
+    );
+
+    lastImpact =
+      millis();
+  }
+
+  // ----------------------------------------------------------
+  // STRONG BASS EVENTS
+  // ----------------------------------------------------------
+
+  if (
+    (
+      rawLow > 0.78 ||
+      rawOverall > 0.22 ||
+      lowAttack > 0.18
+    ) &&
+    millis() -
+    lastImpact >
+    70
+  ) {
+    impact =
+      max(
+        impact,
+        0.65
+      );
+
+    triggerGlitch(
+      true,
+      max(
+        lowAttack,
+        overallAttack
+      )
+    );
+
+    lastImpact =
+      millis();
+  }
+
+  // ----------------------------------------------------------
+  // IMPACT DECAY
+  // ----------------------------------------------------------
+  //
+  // Fast decay keeps individual hits distinct.
+  // ----------------------------------------------------------
+
+  impact *= 0.82;
+
+  if (
+    impact < 0.01
+  ) {
+    impact = 0;
+  }
+
+  // ----------------------------------------------------------
+  // UPDATE HISTORY
+  // ----------------------------------------------------------
+
+  previousLow =
+    rawLow;
+
+  previousHigh =
+    rawHigh;
+
+  previousOverall =
+    rawOverall;
+
+  // ----------------------------------------------------------
+  // UPDATE + DRAW
+  // ----------------------------------------------------------
+
+  updateCells();
+
+  drawCells();
+}
+
+// ============================================================
+// UPDATE CELL MOVEMENT
+// ============================================================
+
+function updateCells() {
+  for (
+    let i = 0;
+    i < cells.length;
+    i++
+  ) {
+    let c =
+      cells[i];
+
+    // ========================================================
+    // MIDS = HORIZONTAL
+    // ========================================================
+
+    let horizontalWave =
+      sin(
+        frameCount * 0.035 +
+        c.phase
+      );
+
+    let horizontalTarget =
+      horizontalWave *
+      mid *
+      9.0 *
+      c.sensitivity;
+
+    horizontalTarget +=
+      sin(
+        frameCount * 0.012 +
+        c.phase * 2.1
+      ) *
+      mid *
+      3.0;
+
+    // ========================================================
+    // HIGHS = VERTICAL
+    // ========================================================
+
+    let verticalWave =
+      cos(
+        frameCount * 0.055 +
+        c.phase
+      );
+
+    let verticalTarget =
+      verticalWave *
+      high *
+      5.5 *
+      c.sensitivity;
+
+    verticalTarget +=
+      sin(
+        frameCount * 0.11 +
+        c.phase * 3
+      ) *
+      high *
+      2.0;
+
+    // ========================================================
+    // LOWS = SECONDARY HEAVY MOVEMENT
+    // ========================================================
+
+    horizontalTarget +=
+      sin(
+        frameCount * 0.025 +
+        c.phase
+      ) *
+      low *
+      3.0;
+
+    verticalTarget +=
+      cos(
+        frameCount * 0.021 +
+        c.phase
+      ) *
+      low *
+      1.5;
+
+    // ========================================================
+    // PERCUSSIVE IMPACT
+    // ========================================================
+    //
+    // Reduced substantially compared with the previous version.
+    // The entire field still reacts, but it stays controlled.
+    // ========================================================
+
+    if (
+      impact > 0.01
+    ) {
+      let hitChaosX =
+        sin(
+          frameCount * 0.32 +
+          c.phase * 4.7
+        );
+
+      let hitChaosY =
+        cos(
+          frameCount * 0.41 +
+          c.phase * 3.2
+        );
+
+      // Main impact movement
+      horizontalTarget +=
+        hitChaosX *
+        impact *
+        6.0 *
+        c.sensitivity;
+
+      verticalTarget +=
+        hitChaosY *
+        impact *
+        5.0 *
+        c.sensitivity;
+
+      // Small fast twitch
+      horizontalTarget +=
+        sin(
+          frameCount * 0.75 +
+          c.phase * 8
+        ) *
+        impact *
+        1.5;
+
+      verticalTarget +=
+        cos(
+          frameCount * 0.9 +
+          c.phase * 6
+        ) *
+        impact *
+        1.2;
+    }
+
+    // ========================================================
+    // MOVE
+    // ========================================================
+
+    c.offsetX =
+      lerp(
+        c.offsetX,
+        horizontalTarget,
+        0.30
+      );
+
+    c.offsetY =
+      lerp(
+        c.offsetY,
+        verticalTarget,
+        0.30
+      );
+
+    // ========================================================
+    // GLITCH RETURN
+    // ========================================================
+
+    c.glitchX =
+      lerp(
+        c.glitchX,
+        0,
+        0.20
+      );
+
+    c.glitchY =
+      lerp(
+        c.glitchY,
+        0,
+        0.20
+      );
+  }
+}
+
+// ============================================================
+// DRAW CELLS
+// ============================================================
+
+function drawCells() {
+  let scaleAmount =
+    getScale();
+
+  let cellW =
+    CELL_W *
+    scaleAmount;
+
+  let cellH =
+    CELL_H *
+    scaleAmount;
+
+  let marginX =
+    width *
+    0.055;
+
+  let marginY =
+    height *
+    0.055;
+
+  // ==========================================================
+  // LOWS = DOT WEIGHT
+  // ==========================================================
+  //
+  // Very thin at low bass.
+  // Very bold at strong bass.
+  // ==========================================================
+
+  let bassSensitivity =
+    pow(
+      low,
+      1.7
+    );
+
+  // ==========================================================
+  // PERCUSSIVE WEIGHT
+  // ==========================================================
+  //
+  // Reduced from the previous version.
+  // ==========================================================
+
+  let impactWeight =
+    impact *
+    0.45;
+
+  let dotSize =
+    BASE_DOT_SIZE *
+    scaleAmount *
+    (
+      0.15 +
+      bassSensitivity * 3.5 +
+      impactWeight
+    );
+
+  noStroke();
+
+  fill(
+    15,
+    15,
+    15
+  );
+
+  for (
+    let i = 0;
+    i < cells.length;
+    i++
+  ) {
+    let c =
+      cells[i];
+
+    // --------------------------------------------------------
+    // ORIGINAL POSITION
+    // --------------------------------------------------------
+
+    let x =
+      marginX +
+      c.x *
+      cellW;
+
+    let y =
+      marginY +
+      c.y *
+      cellH;
+
+    // --------------------------------------------------------
+    // AUDIO MOVEMENT
+    // --------------------------------------------------------
+
+    x +=
+      c.offsetX +
+      c.glitchX;
+
+    y +=
+      c.offsetY +
+      c.glitchY;
+
+    // --------------------------------------------------------
+    // DRAW SIX DOTS
+    // --------------------------------------------------------
+
+    for (
+      let d = 0;
+      d < 6;
+      d++
+    ) {
+      if (
+        !c.pattern[d]
+      ) {
+        continue;
+      }
+
+      let column =
+        d < 3
+          ? 0
+          : 1;
+
+      let row =
+        d % 3;
+
+      let dotX =
+        x +
+        column *
+        6.2 *
+        scaleAmount;
+
+      let dotY =
+        y +
+        row *
+        6.2 *
+        scaleAmount;
+
+      // ------------------------------------------------------
+      // HIGH FREQUENCY TWITCH
+      // ------------------------------------------------------
+
+      let highTwitch =
+        sin(
+          frameCount * 0.16 +
+          c.phase +
+          d
+        ) *
+        high *
+        1.8 *
+        scaleAmount;
+
+      dotY +=
+        highTwitch;
+
+      // ------------------------------------------------------
+      // PERCUSSIVE MICRO-TWITCH
+      // ------------------------------------------------------
+
+      if (
+        impact > 0.01
+      ) {
+        dotX +=
+          sin(
+            frameCount * 0.7 +
+            c.phase * 5 +
+            d
+          ) *
+          impact *
+          3.0 *
+          scaleAmount;
+
+        dotY +=
+          cos(
+            frameCount * 0.85 +
+            c.phase * 4 +
+            d
+          ) *
+          impact *
+          3.0 *
+          scaleAmount;
+      }
+
+      ellipse(
+        dotX,
+        dotY,
+        dotSize,
+        dotSize
+      );
+    }
+  }
+}
+
+// ============================================================
+// PERCUSSIVE HIT
+// ============================================================
+
+function triggerPercussiveHit(
+  strength
+) {
+  let amount =
+    floor(
+      cells.length *
+      random(
+        0.06,
+        0.14
+      )
+    );
+
+  // ----------------------------------------------------------
+  // DISPLACE A SMALL SECTION OF CELLS
+  // ----------------------------------------------------------
+
+  for (
+    let i = 0;
+    i < amount;
+    i++
+  ) {
+    let index =
+      floor(
+        random(
+          cells.length
+        )
+      );
+
+    let c =
+      cells[index];
+
+    let direction =
+      random() <
+      0.5
+        ? -1
+        : 1;
+
+    c.glitchX +=
+      direction *
+      random(
+        5,
+        16
+      ) *
+      max(
+        0.7,
+        strength
+      );
+
+    c.glitchY +=
+      random(
+        -7,
+        7
+      ) *
+      max(
+        0.7,
+        strength
+      );
+
+    // Occasionally rearrange a cell.
+    if (
+      random() <
+      0.18
+    ) {
+      c.pattern =
+        createBraillePattern();
+    }
+  }
+
+  // ----------------------------------------------------------
+  // SMALL HORIZONTAL TEARS
+  // ----------------------------------------------------------
+
+  let numberOfTears =
+    floor(
+      random(
+        0,
+        3
+      )
+    );
+
+  for (
+    let t = 0;
+    t < numberOfTears;
+    t++
+  ) {
+    let targetRow =
+      floor(
+        random(rows)
+      );
+
+    let shift =
+      random(
+        -25,
+        25
+      ) *
+      max(
+        0.8,
+        strength
+      );
+
+    for (
+      let i = 0;
+      i < cells.length;
+      i++
+    ) {
+      let c =
+        cells[i];
+
+      if (
+        c.y === targetRow &&
+        random() <
+        0.45
+      ) {
+        c.glitchX +=
+          shift;
+      }
+    }
+  }
+}
+
+// ============================================================
+// BASS GLITCH
+// ============================================================
+
+function triggerGlitch(
+  extreme,
+  attack
+) {
+  let amount;
+
+  if (
+    extreme
+  ) {
+    amount =
+      floor(
+        cells.length *
+        random(
+          0.10,
+          0.22
+        )
+      );
+  }
+  else {
+    amount =
+      floor(
+        cells.length *
+        random(
+          0.025,
+          0.06
+        )
+      );
+  }
+
+  for (
+    let i = 0;
+    i < amount;
+    i++
+  ) {
+    let index =
+      floor(
+        random(
+          cells.length
+        )
+      );
+
+    let c =
+      cells[index];
+
+    let strength =
+      extreme
+        ? random(1.3, 2.5)
+        : random(0.7, 1.2);
+
+    c.glitchX +=
+      random(
+        -14,
+        14
+      ) *
+      strength;
+
+    c.glitchY +=
+      random(
+        -5,
+        5
+      ) *
+      strength;
+
+    if (
+      extreme ||
+      random() < 0.35
+    ) {
+      c.pattern =
+        createBraillePattern();
+    }
+  }
+
+  // ----------------------------------------------------------
+  // HORIZONTAL TEARS
+  // ----------------------------------------------------------
+
+  let numberOfTears =
+    extreme
+      ? floor(
+          random(2, 5)
+        )
+      : floor(
+          random(0, 2)
+        );
+
+  for (
+    let t = 0;
+    t < numberOfTears;
+    t++
+  ) {
+    let targetRow =
+      floor(
+        random(rows)
+      );
+
+    let shift =
+      extreme
+        ? random(
+            -45,
+            45
+          )
+        : random(
+            -12,
+            12
+          );
+
+    for (
+      let i = 0;
+      i < cells.length;
+      i++
+    ) {
+      let c =
+        cells[i];
+
+      if (
+        c.y === targetRow &&
+        random() <
+        (
+          extreme
+            ? 0.65
+            : 0.25
+        )
+      ) {
+        c.glitchX +=
+          shift;
+      }
+    }
+  }
+
+  // ----------------------------------------------------------
+  // EXTREME GLOBAL CHAOS
+  // ----------------------------------------------------------
+
+  if (
+    extreme
+  ) {
+    for (
+      let i = 0;
+      i < cells.length;
+      i++
+    ) {
+      let c =
+        cells[i];
+
+      if (
+        random() < 0.05
+      ) {
+        c.glitchX +=
+          random(
+            -22,
+            22
+          );
+
+        c.glitchY +=
+          random(
+            -10,
+            10
+          );
+
+        c.pattern =
+          createBraillePattern();
+      }
+    }
+  }
+}
+
+// ============================================================
+// SCALE
+// ============================================================
+
+function getScale() {
+  let scaleAmount =
+    min(
+      width / 1500,
+      height / 850
+    );
+
+  return max(
+    scaleAmount,
+    0.55
+  );
+}
+
+// ============================================================
+// PLAY / PAUSE
+// ============================================================
+
+function mousePressed() {
+  userStartAudio();
+
+  if (
+    !song ||
+    !song.isLoaded()
+  ) {
+    return;
+  }
+
+  if (
+    song.isPlaying()
+  ) {
+    song.pause();
+  }
+  else {
+    song.loop();
+  }
+}
+
+// ============================================================
+// RESIZE
+// ============================================================
+
+function windowResized() {
+  resizeCanvas(
+    windowWidth,
+    windowHeight
+  );
+
+  createField();
+}
+
+</script>
+
+</body>
+</html>
