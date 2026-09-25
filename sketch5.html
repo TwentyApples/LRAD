@@ -29,7 +29,7 @@
 </head>
 
 <body>
-  
+
 <script>
 //SKETCH5 MOBILE FRIENDLY
 
@@ -46,6 +46,7 @@
 // HITS  -> short, controlled burst across the field
 //
 // Put "shortenedvoicebreak.mp3" in the same folder.
+// Click anywhere to play / pause.
 // Click / tap anywhere to play / pause.
 // ============================================================
 
@@ -119,6 +120,10 @@ function preload() {
 // ============================================================
 
 function setup() {
+  createCanvas(
+    windowWidth,
+    windowHeight
+  );
 
   isMobile =
     windowWidth <= 700;
@@ -704,6 +709,7 @@ function updateCells() {
     // PERCUSSIVE IMPACT
     // ========================================================
     //
+    // Reduced substantially compared with the previous version.
     // Reduced from the previous version.
     // The entire field still reacts, but it stays controlled.
     // ========================================================
@@ -1365,6 +1371,7 @@ function getScale() {
 // PLAY / PAUSE
 // ============================================================
 
+function mousePressed() {
 function toggleAudio() {
 
   userStartAudio();
