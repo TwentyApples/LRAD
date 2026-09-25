@@ -31,7 +31,6 @@
 <body>
 
 <script>
-//SKETCH5 MOBILE FRIENDLY
 
 //WEBSITE CODE - BRAILLE
 
@@ -47,9 +46,7 @@
 //
 // Put "shortenedvoicebreak.mp3" in the same folder.
 // Click anywhere to play / pause.
-// Click / tap anywhere to play / pause.
 // ============================================================
-
 
 let song;
 let amp;
@@ -59,14 +56,6 @@ let cells = [];
 
 let cols;
 let rows;
-
-
-// ============================================================
-// MOBILE STATE
-// ============================================================
-
-let isMobile = false;
-
 
 // ------------------------------------------------------------
 // AUDIO VALUES
@@ -85,14 +74,12 @@ let previousLow = 0;
 let previousHigh = 0;
 let previousOverall = 0;
 
-
 // ------------------------------------------------------------
 // PERCUSSIVE IMPACT
 // ------------------------------------------------------------
 
 let impact = 0;
 let lastImpact = 0;
-
 
 // ------------------------------------------------------------
 // VISUAL SETTINGS
@@ -102,7 +89,6 @@ const CELL_W = 19;
 const CELL_H = 27;
 
 const BASE_DOT_SIZE = 2.0;
-
 
 // ============================================================
 // PRELOAD
@@ -114,7 +100,6 @@ function preload() {
   );
 }
 
-
 // ============================================================
 // SETUP
 // ============================================================
@@ -124,11 +109,6 @@ function setup() {
     windowWidth,
     windowHeight
   );
-
-  isMobile =
-    windowWidth <= 700;
-
-  createResponsiveCanvas();
 
   pixelDensity(1);
 
@@ -141,84 +121,6 @@ function setup() {
 
   createField();
 }
-
-
-// ============================================================
-// RESPONSIVE CANVAS
-// ============================================================
-
-function createResponsiveCanvas() {
-
-  // ----------------------------------------------------------
-  // MOBILE
-  // ----------------------------------------------------------
-  //
-  // Keep the artwork in the original landscape coordinate
-  // system. The CSS presentation scales the 1300 x 900 canvas
-  // to the phone's full height and crops the sides.
-  // ----------------------------------------------------------
-
-  if (isMobile) {
-
-    createCanvas(
-      1300,
-      900
-    );
-
-    let viewport =
-      document.querySelector(
-        'meta[name="viewport"]'
-      );
-
-    if (!viewport) {
-
-      viewport =
-        document.createElement(
-          "meta"
-        );
-
-      viewport.name =
-        "viewport";
-
-      document.head.appendChild(
-        viewport
-      );
-    }
-
-    viewport.content =
-      "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no";
-
-    let cnv =
-      document.querySelector(
-        "canvas"
-      );
-
-    if (cnv) {
-      cnv.style.touchAction =
-        "none";
-    }
-
-    positionMobileCanvas();
-
-    return;
-  }
-
-
-  // ----------------------------------------------------------
-  // DESKTOP
-  // ----------------------------------------------------------
-  //
-  // Original desktop behavior.
-  // ----------------------------------------------------------
-
-  createCanvas(
-    windowWidth,
-    windowHeight
-  );
-
-  pixelDensity(1);
-}
-
 
 // ============================================================
 // CREATE FIELD
@@ -257,15 +159,12 @@ function createField() {
     y < rows;
     y++
   ) {
-
     for (
       let x = 0;
       x < cols;
       x++
     ) {
-
       cells.push({
-
         x: x,
         y: y,
 
@@ -287,7 +186,6 @@ function createField() {
   }
 }
 
-
 // ============================================================
 // BRAILLE-INSPIRED PATTERN
 // ============================================================
@@ -300,7 +198,6 @@ function createField() {
 // ============================================================
 
 function createBraillePattern() {
-
   let pattern = [];
 
   let density =
@@ -308,48 +205,35 @@ function createBraillePattern() {
 
   let probability;
 
-
   if (
     density < 0.18
   ) {
-
     probability = 0.28;
-
   }
-
   else if (
     density < 0.65
   ) {
-
     probability = 0.48;
-
   }
-
   else {
-
     probability = 0.64;
   }
-
 
   for (
     let i = 0;
     i < 6;
     i++
   ) {
-
     pattern.push(
       random() <
       probability
     );
   }
 
-
   // Never completely empty.
-
   if (
     !pattern.includes(true)
   ) {
-
     pattern[
       floor(
         random(6)
@@ -357,26 +241,21 @@ function createBraillePattern() {
     ] = true;
   }
 
-
   return pattern;
 }
-
 
 // ============================================================
 // DRAW
 // ============================================================
 
 function draw() {
-
   background(255);
-
 
   // ----------------------------------------------------------
   // ANALYZE
   // ----------------------------------------------------------
 
   fft.analyze();
-
 
   // ----------------------------------------------------------
   // FREQUENCY BANDS
@@ -403,7 +282,6 @@ function draw() {
   let rawOverall =
     amp.getLevel();
 
-
   // ----------------------------------------------------------
   // DETECT FAST CHANGES
   // ----------------------------------------------------------
@@ -428,7 +306,6 @@ function draw() {
       rawOverall -
       previousOverall
     );
-
 
   // ----------------------------------------------------------
   // SMOOTH NORMAL MOVEMENT
@@ -461,7 +338,6 @@ function draw() {
       rawOverall,
       0.20
     );
-
 
   // ----------------------------------------------------------
   // PERCUSSIVE HIT DETECTION
@@ -498,7 +374,6 @@ function draw() {
       0.035
     );
 
-
   // ----------------------------------------------------------
   // TRIGGER CONTROLLED IMPACT
   // ----------------------------------------------------------
@@ -509,7 +384,6 @@ function draw() {
     lastImpact >
     55
   ) {
-
     let hitStrength =
       constrain(
         highAttack * 5.5 +
@@ -519,9 +393,7 @@ function draw() {
         2.5
       );
 
-
     // Much gentler than the previous version.
-
     impact =
       max(
         impact,
@@ -529,16 +401,13 @@ function draw() {
         hitStrength * 0.45
       );
 
-
     triggerPercussiveHit(
       hitStrength
     );
 
-
     lastImpact =
       millis();
   }
-
 
   // ----------------------------------------------------------
   // STRONG BASS EVENTS
@@ -554,13 +423,11 @@ function draw() {
     lastImpact >
     70
   ) {
-
     impact =
       max(
         impact,
         0.65
       );
-
 
     triggerGlitch(
       true,
@@ -570,11 +437,9 @@ function draw() {
       )
     );
 
-
     lastImpact =
       millis();
   }
-
 
   // ----------------------------------------------------------
   // IMPACT DECAY
@@ -585,14 +450,11 @@ function draw() {
 
   impact *= 0.82;
 
-
   if (
     impact < 0.01
   ) {
-
     impact = 0;
   }
-
 
   // ----------------------------------------------------------
   // UPDATE HISTORY
@@ -607,7 +469,6 @@ function draw() {
   previousOverall =
     rawOverall;
 
-
   // ----------------------------------------------------------
   // UPDATE + DRAW
   // ----------------------------------------------------------
@@ -617,22 +478,18 @@ function draw() {
   drawCells();
 }
 
-
 // ============================================================
 // UPDATE CELL MOVEMENT
 // ============================================================
 
 function updateCells() {
-
   for (
     let i = 0;
     i < cells.length;
     i++
   ) {
-
     let c =
       cells[i];
-
 
     // ========================================================
     // MIDS = HORIZONTAL
@@ -658,7 +515,6 @@ function updateCells() {
       mid *
       3.0;
 
-
     // ========================================================
     // HIGHS = VERTICAL
     // ========================================================
@@ -683,7 +539,6 @@ function updateCells() {
       high *
       2.0;
 
-
     // ========================================================
     // LOWS = SECONDARY HEAVY MOVEMENT
     // ========================================================
@@ -704,20 +559,17 @@ function updateCells() {
       low *
       1.5;
 
-
     // ========================================================
     // PERCUSSIVE IMPACT
     // ========================================================
     //
     // Reduced substantially compared with the previous version.
-    // Reduced from the previous version.
     // The entire field still reacts, but it stays controlled.
     // ========================================================
 
     if (
       impact > 0.01
     ) {
-
       let hitChaosX =
         sin(
           frameCount * 0.32 +
@@ -730,9 +582,7 @@ function updateCells() {
           c.phase * 3.2
         );
 
-
       // Main impact movement
-
       horizontalTarget +=
         hitChaosX *
         impact *
@@ -745,9 +595,7 @@ function updateCells() {
         5.0 *
         c.sensitivity;
 
-
       // Small fast twitch
-
       horizontalTarget +=
         sin(
           frameCount * 0.75 +
@@ -764,7 +612,6 @@ function updateCells() {
         impact *
         1.2;
     }
-
 
     // ========================================================
     // MOVE
@@ -783,7 +630,6 @@ function updateCells() {
         verticalTarget,
         0.30
       );
-
 
     // ========================================================
     // GLITCH RETURN
@@ -805,13 +651,11 @@ function updateCells() {
   }
 }
 
-
 // ============================================================
 // DRAW CELLS
 // ============================================================
 
 function drawCells() {
-
   let scaleAmount =
     getScale();
 
@@ -831,7 +675,6 @@ function drawCells() {
     height *
     0.055;
 
-
   // ==========================================================
   // LOWS = DOT WEIGHT
   // ==========================================================
@@ -845,7 +688,6 @@ function drawCells() {
       low,
       1.7
     );
-
 
   // ==========================================================
   // PERCUSSIVE WEIGHT
@@ -867,7 +709,6 @@ function drawCells() {
       impactWeight
     );
 
-
   noStroke();
 
   fill(
@@ -876,16 +717,13 @@ function drawCells() {
     15
   );
 
-
   for (
     let i = 0;
     i < cells.length;
     i++
   ) {
-
     let c =
       cells[i];
-
 
     // --------------------------------------------------------
     // ORIGINAL POSITION
@@ -901,7 +739,6 @@ function drawCells() {
       c.y *
       cellH;
 
-
     // --------------------------------------------------------
     // AUDIO MOVEMENT
     // --------------------------------------------------------
@@ -914,7 +751,6 @@ function drawCells() {
       c.offsetY +
       c.glitchY;
 
-
     // --------------------------------------------------------
     // DRAW SIX DOTS
     // --------------------------------------------------------
@@ -924,13 +760,11 @@ function drawCells() {
       d < 6;
       d++
     ) {
-
       if (
         !c.pattern[d]
       ) {
         continue;
       }
-
 
       let column =
         d < 3
@@ -939,7 +773,6 @@ function drawCells() {
 
       let row =
         d % 3;
-
 
       let dotX =
         x +
@@ -952,7 +785,6 @@ function drawCells() {
         row *
         6.2 *
         scaleAmount;
-
 
       // ------------------------------------------------------
       // HIGH FREQUENCY TWITCH
@@ -971,7 +803,6 @@ function drawCells() {
       dotY +=
         highTwitch;
 
-
       // ------------------------------------------------------
       // PERCUSSIVE MICRO-TWITCH
       // ------------------------------------------------------
@@ -979,7 +810,6 @@ function drawCells() {
       if (
         impact > 0.01
       ) {
-
         dotX +=
           sin(
             frameCount * 0.7 +
@@ -1001,7 +831,6 @@ function drawCells() {
           scaleAmount;
       }
 
-
       ellipse(
         dotX,
         dotY,
@@ -1012,7 +841,6 @@ function drawCells() {
   }
 }
 
-
 // ============================================================
 // PERCUSSIVE HIT
 // ============================================================
@@ -1020,7 +848,6 @@ function drawCells() {
 function triggerPercussiveHit(
   strength
 ) {
-
   let amount =
     floor(
       cells.length *
@@ -1029,7 +856,6 @@ function triggerPercussiveHit(
         0.14
       )
     );
-
 
   // ----------------------------------------------------------
   // DISPLACE A SMALL SECTION OF CELLS
@@ -1040,7 +866,6 @@ function triggerPercussiveHit(
     i < amount;
     i++
   ) {
-
     let index =
       floor(
         random(
@@ -1056,7 +881,6 @@ function triggerPercussiveHit(
       0.5
         ? -1
         : 1;
-
 
     c.glitchX +=
       direction *
@@ -1079,19 +903,15 @@ function triggerPercussiveHit(
         strength
       );
 
-
     // Occasionally rearrange a cell.
-
     if (
       random() <
       0.18
     ) {
-
       c.pattern =
         createBraillePattern();
     }
   }
-
 
   // ----------------------------------------------------------
   // SMALL HORIZONTAL TEARS
@@ -1105,13 +925,11 @@ function triggerPercussiveHit(
       )
     );
 
-
   for (
     let t = 0;
     t < numberOfTears;
     t++
   ) {
-
     let targetRow =
       floor(
         random(rows)
@@ -1127,30 +945,25 @@ function triggerPercussiveHit(
         strength
       );
 
-
     for (
       let i = 0;
       i < cells.length;
       i++
     ) {
-
       let c =
         cells[i];
-
 
       if (
         c.y === targetRow &&
         random() <
         0.45
       ) {
-
         c.glitchX +=
           shift;
       }
     }
   }
 }
-
 
 // ============================================================
 // BASS GLITCH
@@ -1160,14 +973,11 @@ function triggerGlitch(
   extreme,
   attack
 ) {
-
   let amount;
-
 
   if (
     extreme
   ) {
-
     amount =
       floor(
         cells.length *
@@ -1176,11 +986,8 @@ function triggerGlitch(
           0.22
         )
       );
-
   }
-
   else {
-
     amount =
       floor(
         cells.length *
@@ -1191,13 +998,11 @@ function triggerGlitch(
       );
   }
 
-
   for (
     let i = 0;
     i < amount;
     i++
   ) {
-
     let index =
       floor(
         random(
@@ -1208,12 +1013,10 @@ function triggerGlitch(
     let c =
       cells[index];
 
-
     let strength =
       extreme
         ? random(1.3, 2.5)
         : random(0.7, 1.2);
-
 
     c.glitchX +=
       random(
@@ -1229,17 +1032,14 @@ function triggerGlitch(
       ) *
       strength;
 
-
     if (
       extreme ||
       random() < 0.35
     ) {
-
       c.pattern =
         createBraillePattern();
     }
   }
-
 
   // ----------------------------------------------------------
   // HORIZONTAL TEARS
@@ -1254,18 +1054,15 @@ function triggerGlitch(
           random(0, 2)
         );
 
-
   for (
     let t = 0;
     t < numberOfTears;
     t++
   ) {
-
     let targetRow =
       floor(
         random(rows)
       );
-
 
     let shift =
       extreme
@@ -1278,16 +1075,13 @@ function triggerGlitch(
             12
           );
 
-
     for (
       let i = 0;
       i < cells.length;
       i++
     ) {
-
       let c =
         cells[i];
-
 
       if (
         c.y === targetRow &&
@@ -1298,13 +1092,11 @@ function triggerGlitch(
             : 0.25
         )
       ) {
-
         c.glitchX +=
           shift;
       }
     }
   }
-
 
   // ----------------------------------------------------------
   // EXTREME GLOBAL CHAOS
@@ -1313,21 +1105,17 @@ function triggerGlitch(
   if (
     extreme
   ) {
-
     for (
       let i = 0;
       i < cells.length;
       i++
     ) {
-
       let c =
         cells[i];
-
 
       if (
         random() < 0.05
       ) {
-
         c.glitchX +=
           random(
             -22,
@@ -1347,13 +1135,11 @@ function triggerGlitch(
   }
 }
 
-
 // ============================================================
 // SCALE
 // ============================================================
 
 function getScale() {
-
   let scaleAmount =
     min(
       width / 1500,
@@ -1366,16 +1152,12 @@ function getScale() {
   );
 }
 
-
 // ============================================================
 // PLAY / PAUSE
 // ============================================================
 
 function mousePressed() {
-function toggleAudio() {
-
   userStartAudio();
-
 
   if (
     !song ||
@@ -1384,139 +1166,21 @@ function toggleAudio() {
     return;
   }
 
-
   if (
     song.isPlaying()
   ) {
-
     song.pause();
-
   }
-
   else {
-
     song.loop();
   }
 }
-
-
-// ============================================================
-// DESKTOP MOUSE
-// ============================================================
-
-function mousePressed() {
-
-  if (!isMobile) {
-    toggleAudio();
-  }
-}
-
-
-// ============================================================
-// MOBILE TOUCH
-// ============================================================
-
-function touchStarted() {
-
-  if (isMobile) {
-
-    toggleAudio();
-
-    return false;
-  }
-}
-
-
-// ============================================================
-// MOBILE CANVAS POSITIONING
-// ============================================================
-
-function positionMobileCanvas() {
-
-  if (!isMobile) {
-    return;
-  }
-
-
-  let cnv =
-    document.querySelector(
-      "canvas"
-    );
-
-
-  if (!cnv) {
-    return;
-  }
-
-
-  // The source artwork is 1300 x 900.
-  //
-  // Scale it based ONLY on viewport height so
-  // the complete vertical artwork fits the phone.
-
-  let scale =
-    window.innerHeight / 900;
-
-
-  cnv.style.position =
-    "absolute";
-
-  cnv.style.width =
-    (1300 * scale) + "px";
-
-  cnv.style.height =
-    (900 * scale) + "px";
-
-
-  // Center the landscape artwork.
-  // Anything outside the phone width is cropped.
-
-  cnv.style.left =
-    "50%";
-
-  cnv.style.top =
-    "0";
-
-  cnv.style.transform =
-    "translateX(-50%)";
-
-  cnv.style.margin =
-    "0";
-}
-
 
 // ============================================================
 // RESIZE
 // ============================================================
 
 function windowResized() {
-
-  // ----------------------------------------------------------
-  // MOBILE
-  // ----------------------------------------------------------
-
-  if (isMobile) {
-
-    resizeCanvas(
-      1300,
-      900
-    );
-
-    positionMobileCanvas();
-
-    createField();
-
-    return;
-  }
-
-
-  // ----------------------------------------------------------
-  // DESKTOP
-  // ----------------------------------------------------------
-  //
-  // Original desktop behavior.
-  // ----------------------------------------------------------
-
   resizeCanvas(
     windowWidth,
     windowHeight
@@ -1524,7 +1188,6 @@ function windowResized() {
 
   createField();
 }
-
 </script>
 
 </body>
