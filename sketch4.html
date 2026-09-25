@@ -32,6 +32,8 @@
 
 // PASTE THE ENTIRE SUNMOON NETWORK SKETCH HERE
 
+//SKETCH4 MOBILE FRIENDLY
+
 //WEBSITE CODE - MAP THING
 
 let nodes = [];
@@ -42,6 +44,12 @@ let fft;
 
 let audioStarted = false;
 let audioEnabled = false;
+
+// ==================================================
+// MOBILE STATE
+// ==================================================
+
+let isMobile = false;
 
 let previousSpectrum = [];
 let averageEnergy = 0;
@@ -67,6 +75,8 @@ function preload() {
 
 function setup() {
 
+  isMobile = windowWidth <= 700;
+
   createResponsiveCanvas();
 
   fft = new p5.FFT(0.75, 256);
@@ -84,6 +94,50 @@ function setup() {
 // ==================================================
 
 function createResponsiveCanvas() {
+
+  if (isMobile) {
+
+    createCanvas(
+      1300,
+      900
+    );
+
+    pixelDensity(1);
+
+    let viewport =
+      document.querySelector(
+        'meta[name="viewport"]'
+      );
+
+    if (!viewport) {
+      viewport =
+        document.createElement("meta");
+
+      viewport.name =
+        "viewport";
+
+      document.head.appendChild(
+        viewport
+      );
+    }
+
+    viewport.content =
+      "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no";
+
+    let cnv =
+      document.querySelector(
+        "canvas"
+      );
+
+    if (cnv) {
+      cnv.style.touchAction =
+        "none";
+    }
+
+    positionMobileCanvas();
+
+    return;
+  }
 
   let w = windowWidth;
   let h = windowHeight;
@@ -1233,15 +1287,18 @@ function drawAudioIndicator() {
 
 function mousePressed() {
 
-  toggleAudio();
+  if (!isMobile) {
+    toggleAudio();
+  }
 }
 
 
 function touchStarted() {
 
-  toggleAudio();
-
-  return false;
+  if (isMobile) {
+    toggleAudio();
+    return false;
+  }
 }
 
 
@@ -1324,10 +1381,80 @@ function toggleAudio() {
 
 
 // ==================================================
+// MOBILE CANVAS POSITIONING
+// ==================================================
+
+function positionMobileCanvas() {
+
+  if (!isMobile) {
+    return;
+  }
+
+  let cnv =
+    document.querySelector(
+      "canvas"
+    );
+
+  if (!cnv) {
+    return;
+  }
+
+  // Scale the 1300 x 900 artwork so its
+  // complete height fits the phone viewport.
+
+  let scale =
+    window.innerHeight / 900;
+
+  cnv.style.position =
+    "absolute";
+
+  cnv.style.width =
+    (1300 * scale) + "px";
+
+  cnv.style.height =
+    (900 * scale) + "px";
+
+  // Center horizontally.
+  // The sides are intentionally cropped.
+
+  cnv.style.left =
+    "50%";
+
+  cnv.style.top =
+    "0";
+
+  cnv.style.transform =
+    "translateX(-50%)";
+
+  cnv.style.margin =
+    "0";
+}
+
+
+// ==================================================
 // RESIZE
 // ==================================================
 
 function windowResized() {
+
+  if (isMobile) {
+
+    resizeCanvas(
+      1300,
+      900
+    );
+
+    positionMobileCanvas();
+
+    generateNetwork();
+
+    redraw();
+
+    return;
+  }
+
+
+  // DESKTOP — ORIGINAL BEHAVIOR
 
   let w = windowWidth;
   let h = windowHeight;
@@ -1350,6 +1477,8 @@ function windowResized() {
 
   redraw();
 }
+
+
 
 </script>
 
