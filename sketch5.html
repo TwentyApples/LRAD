@@ -30,6 +30,33 @@
 
 <body>
 
+<button id="audio-button">PLAY</button>
+
+<style>
+  #audio-button {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 9999;
+
+    background: white;
+    color: black;
+    border: 1px solid black;
+
+    padding: 8px 12px;
+
+    font-family: monospace;
+    font-size: 11px;
+
+    cursor: pointer;
+  }
+
+  #audio-button:hover {
+    background: black;
+    color: white;
+  }
+</style>
+
 <script>
 //SKETCH5 MOBILE FRIENDLY
 
@@ -1518,6 +1545,20 @@ function windowResized() {
   createField();
 }
 
+</script>
+
+<script>
+  const audioButton = document.getElementById("audio-button");
+
+  audioButton.addEventListener("click", function () {
+    toggleAudio();
+
+    if (song && song.isPlaying()) {
+      audioButton.textContent = "PAUSE";
+    } else {
+      audioButton.textContent = "PLAY";
+    }
+  });
 </script>
 
 </body>
