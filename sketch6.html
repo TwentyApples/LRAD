@@ -32,6 +32,8 @@
 
 <script>
 
+//SKETCH6 MOBILE FRIENDLY
+
 // ============================================================
 // EARTHWORKS — p5.js / p5.sound
 // ============================================================
@@ -52,6 +54,7 @@
 // - stronger but still controlled audio glitching
 // ============================================================
 
+
 let song;
 let fft;
 
@@ -60,8 +63,8 @@ let playing = false;
 const AUDIO_FILE = "earthworkspercussive.mp3";
 
 // Smaller = more pixels.
-// 12–16 works well for a dense landscape grid.
-const CELL = 14;
+// 8 gives a much denser grid than the original 14.
+const CELL = 8;
 
 let cols;
 let rows;
@@ -87,6 +90,22 @@ let seedValue = 12345;
 
 
 // ============================================================
+// MOBILE CANVAS SETTINGS
+// ============================================================
+
+// The artwork itself is always rendered as a proper
+// landscape composition on mobile.
+//
+// It is then scaled using its HEIGHT so the complete
+// 900px vertical composition fits the phone.
+//
+// The extra width intentionally extends beyond the phone
+// and is cropped on the left/right.
+const MOBILE_CANVAS_WIDTH = 1600;
+const MOBILE_CANVAS_HEIGHT = 900;
+
+
+// ============================================================
 // SETUP
 // ============================================================
 
@@ -94,8 +113,25 @@ function preload() {
   song = loadSound(AUDIO_FILE);
 }
 
+
 function setup() {
-  createCanvas(windowWidth, windowHeight);
+
+  if (isMobileDevice()) {
+
+    // True landscape artwork on mobile.
+    createCanvas(
+      MOBILE_CANVAS_WIDTH,
+      MOBILE_CANVAS_HEIGHT
+    );
+
+  } else {
+
+    // Desktop remains responsive.
+    createCanvas(
+      windowWidth,
+      windowHeight
+    );
+  }
 
   // Prevent fuzzy / retina interpolation.
   pixelDensity(1);
@@ -106,6 +142,76 @@ function setup() {
 
   calculateGrid();
   generateComposition();
+
+  if (isMobileDevice()) {
+    positionMobileCanvas();
+  }
+}
+
+
+// ============================================================
+// MOBILE DETECTION
+// ============================================================
+
+function isMobileDevice() {
+
+  return (
+    windowWidth <= 900 ||
+    /Android|iPhone|iPad|iPod/i.test(
+      navigator.userAgent
+    )
+  );
+}
+
+
+// ============================================================
+// MOBILE CANVAS POSITIONING
+// ============================================================
+
+function positionMobileCanvas() {
+
+  if (!isMobileDevice()) {
+    return;
+  }
+
+  let cnv = document.querySelector("canvas");
+
+  if (!cnv) {
+    return;
+  }
+
+  // Scale only from the vertical dimension.
+  //
+  // Example:
+  // iPhone height = 844
+  //
+  // scale = 844 / 900
+  //
+  // The 1600 × 900 artwork becomes approximately:
+  // 1500 × 844
+  //
+  // Therefore the complete height fits the phone,
+  // while the sides naturally crop.
+  let scale =
+    window.innerHeight /
+    MOBILE_CANVAS_HEIGHT;
+
+  cnv.style.position = "absolute";
+
+  cnv.style.width =
+    (MOBILE_CANVAS_WIDTH * scale) + "px";
+
+  cnv.style.height =
+    (MOBILE_CANVAS_HEIGHT * scale) + "px";
+
+  cnv.style.left = "50%";
+  cnv.style.top = "0";
+
+  cnv.style.transform =
+    "translateX(-50%)";
+
+  cnv.style.margin = "0";
+  cnv.style.display = "block";
 }
 
 
@@ -114,6 +220,7 @@ function setup() {
 // ============================================================
 
 function draw() {
+
   background(248);
 
   analyzeAudio();
@@ -123,6 +230,7 @@ function draw() {
   updateComposition();
 
   drawGrid();
+
   drawArtwork();
 
   // Audio-triggered flashes.
@@ -139,7 +247,9 @@ function draw() {
 // ============================================================
 
 function calculateGrid() {
+
   cols = floor(width / CELL);
+
   rows = floor(height / CELL);
 
   darkGrid = [];
@@ -148,14 +258,17 @@ function calculateGrid() {
   whiteFlashGrid = [];
 
   for (let y = 0; y < rows; y++) {
+
     darkGrid[y] = [];
     nextGrid[y] = [];
     glitchGrid[y] = [];
     whiteFlashGrid[y] = [];
 
     for (let x = 0; x < cols; x++) {
+
       darkGrid[y][x] = false;
       nextGrid[y][x] = false;
+
       glitchGrid[y][x] = 0;
       whiteFlashGrid[y][x] = 0;
     }
@@ -173,42 +286,63 @@ function generateComposition() {
 
   // Start empty.
   for (let y = 0; y < rows; y++) {
+
     for (let x = 0; x < cols; x++) {
+
       nextGrid[y][x] = false;
     }
   }
 
+
   // ----------------------------------------------------------
   // Large diagonal "earthwork" structure.
-  //
-  // This creates the characteristic descending geometric form
-  // from the reference, but allows it to mutate each refresh.
   // ----------------------------------------------------------
 
-  let startX = floor(cols * random(0.26, 0.34));
-  let startY = floor(rows * random(0.30, 0.38));
+  let startX =
+    floor(
+      cols *
+      random(0.26, 0.34)
+    );
+
+  let startY =
+    floor(
+      rows *
+      random(0.30, 0.38)
+    );
 
   let x = startX;
   let y = startY;
 
-  let length = floor(cols * random(0.32, 0.48));
+  let length =
+    floor(
+      cols *
+      random(0.32, 0.48)
+    );
+
 
   for (let i = 0; i < length; i++) {
 
     // Horizontal / diagonal movement.
-    let thickness = random() < 0.45 ? 2 : 1;
+    let thickness =
+      random() < 0.45
+        ? 2
+        : 1;
+
 
     for (let ty = 0; ty < thickness; ty++) {
+
       for (let tx = 0; tx < 2; tx++) {
 
         let xx = x + tx;
         let yy = y + ty;
 
         if (insideGrid(xx, yy)) {
+
           nextGrid[yy][xx] = true;
         }
       }
     }
+
 
     // Occasionally move downward.
     if (random() < 0.30) {
@@ -219,7 +353,10 @@ function generateComposition() {
       y += 2;
     }
 
-    x += random() < 0.72 ? 1 : 2;
+    x +=
+      random() < 0.72
+        ? 1
+        : 2;
   }
 
 
@@ -227,30 +364,80 @@ function generateComposition() {
   // Secondary descending branches.
   // ----------------------------------------------------------
 
-  let branchCount = floor(random(4, 8));
+  let branchCount =
+    floor(
+      random(4, 8)
+    );
+
 
   for (let b = 0; b < branchCount; b++) {
 
-    let bx = floor(random(cols * 0.30, cols * 0.72));
-    let by = floor(random(rows * 0.28, rows * 0.65));
+    let bx =
+      floor(
+        random(
+          cols * 0.30,
+          cols * 0.72
+        )
+      );
 
-    let branchLength = floor(random(7, 20));
+    let by =
+      floor(
+        random(
+          rows * 0.28,
+          rows * 0.65
+        )
+      );
 
-    for (let i = 0; i < branchLength; i++) {
+
+    let branchLength =
+      floor(
+        random(7, 20)
+      );
+
+
+    for (
+      let i = 0;
+      i < branchLength;
+      i++
+    ) {
 
       if (insideGrid(bx, by)) {
+
         nextGrid[by][bx] = true;
 
-        if (random() < 0.38 && insideGrid(bx + 1, by)) {
-          nextGrid[by][bx + 1] = true;
+
+        if (
+          random() < 0.38 &&
+          insideGrid(
+            bx + 1,
+            by
+          )
+        ) {
+
+          nextGrid[by][bx + 1] =
+            true;
         }
 
-        if (random() < 0.18 && insideGrid(bx, by + 1)) {
-          nextGrid[by + 1][bx] = true;
+
+        if (
+          random() < 0.18 &&
+          insideGrid(
+            bx,
+            by + 1
+          )
+        ) {
+
+          nextGrid[by + 1][bx] =
+            true;
         }
       }
 
-      bx += random() < 0.72 ? 1 : 2;
+
+      bx +=
+        random() < 0.72
+          ? 1
+          : 2;
+
 
       if (random() < 0.62) {
         by++;
@@ -263,24 +450,66 @@ function generateComposition() {
   // Small horizontal islands.
   // ----------------------------------------------------------
 
-  let islands = floor(random(7, 16));
+  let islands =
+    floor(
+      random(7, 16)
+    );
+
 
   for (let i = 0; i < islands; i++) {
 
-    let ix = floor(random(cols * 0.18, cols * 0.82));
-    let iy = floor(random(rows * 0.20, rows * 0.82));
+    let ix =
+      floor(
+        random(
+          cols * 0.18,
+          cols * 0.82
+        )
+      );
 
-    let islandWidth = floor(random(2, 8));
+    let iy =
+      floor(
+        random(
+          rows * 0.20,
+          rows * 0.82
+        )
+      );
 
-    for (let j = 0; j < islandWidth; j++) {
 
-      if (insideGrid(ix + j, iy)) {
-        nextGrid[iy][ix + j] = true;
+    let islandWidth =
+      floor(
+        random(2, 8)
+      );
+
+
+    for (
+      let j = 0;
+      j < islandWidth;
+      j++
+    ) {
+
+      if (
+        insideGrid(
+          ix + j,
+          iy
+        )
+      ) {
+
+        nextGrid[iy][ix + j] =
+          true;
       }
 
+
       // Irregular second row.
-      if (random() < 0.42 && insideGrid(ix + j, iy + 1)) {
-        nextGrid[iy + 1][ix + j] = true;
+      if (
+        random() < 0.42 &&
+        insideGrid(
+          ix + j,
+          iy + 1
+        )
+      ) {
+
+        nextGrid[iy + 1][ix + j] =
+          true;
       }
     }
   }
@@ -288,25 +517,61 @@ function generateComposition() {
 
   // ----------------------------------------------------------
   // Cut holes back into the structure.
-  // This produces the white geometric interruptions.
   // ----------------------------------------------------------
 
-  let holes = floor(cols * rows * 0.006);
+  let holes =
+    floor(
+      cols *
+      rows *
+      0.006
+    );
+
 
   for (let i = 0; i < holes; i++) {
 
-    let hx = floor(random(cols));
-    let hy = floor(random(rows));
+    let hx =
+      floor(
+        random(cols)
+      );
+
+    let hy =
+      floor(
+        random(rows)
+      );
+
 
     if (nextGrid[hy][hx]) {
 
-      let holeSize = random() < 0.8 ? 1 : 2;
+      let holeSize =
+        random() < 0.8
+          ? 1
+          : 2;
 
-      for (let yy = 0; yy < holeSize; yy++) {
-        for (let xx = 0; xx < holeSize; xx++) {
 
-          if (insideGrid(hx + xx, hy + yy)) {
-            nextGrid[hy + yy][hx + xx] = false;
+      for (
+        let yy = 0;
+        yy < holeSize;
+        yy++
+      ) {
+
+        for (
+          let xx = 0;
+          xx < holeSize;
+          xx++
+        ) {
+
+          if (
+            insideGrid(
+              hx + xx,
+              hy + yy
+            )
+          ) {
+
+            nextGrid[
+              hy + yy
+            ][
+              hx + xx
+            ] = false;
           }
         }
       }
@@ -318,15 +583,33 @@ function generateComposition() {
   // A few isolated dark pixels / squares.
   // ----------------------------------------------------------
 
-  let isolated = floor(cols * 0.12);
+  let isolated =
+    floor(
+      cols * 0.12
+    );
 
-  for (let i = 0; i < isolated; i++) {
 
-    let px = floor(random(cols));
-    let py = floor(random(rows));
+  for (
+    let i = 0;
+    i < isolated;
+    i++
+  ) {
+
+    let px =
+      floor(
+        random(cols)
+      );
+
+    let py =
+      floor(
+        random(rows)
+      );
+
 
     if (random() < 0.65) {
-      nextGrid[py][px] = true;
+
+      nextGrid[py][px] =
+        true;
     }
   }
 }
@@ -340,40 +623,73 @@ function updateComposition() {
 
   let now = millis();
 
+
   // Stronger audio = slightly faster structural mutation.
-  let audioSpeed = map(
-    beatEnergy,
-    0,
-    1,
-    900,
-    280
-  );
+  let audioSpeed =
+    map(
+      beatEnergy,
+      0,
+      1,
+      900,
+      280
+    );
 
-  refreshInterval = constrain(audioSpeed, 260, 900);
 
-  if (now - lastRefresh > refreshInterval) {
+  refreshInterval =
+    constrain(
+      audioSpeed,
+      260,
+      900
+    );
+
+
+  if (
+    now - lastRefresh >
+    refreshInterval
+  ) {
 
     lastRefresh = now;
 
     // Change the random seed.
-    seedValue += floor(random(1000, 100000));
+    seedValue +=
+      floor(
+        random(
+          1000,
+          100000
+        )
+      );
+
 
     generateComposition();
 
-    // Cross-fade isn't used: the visual should snap,
+
+    // Cross-fade isn't used:
+    // the visual should snap,
     // like a physical grid being rearranged.
     for (let y = 0; y < rows; y++) {
+
       for (let x = 0; x < cols; x++) {
 
-        let oldValue = darkGrid[y][x];
-        let newValue = nextGrid[y][x];
+        let oldValue =
+          darkGrid[y][x];
 
-        // Mark changed cells for a short glitch.
-        if (oldValue !== newValue) {
-          glitchGrid[y][x] = 1;
+        let newValue =
+          nextGrid[y][x];
+
+
+        // Mark changed cells
+        // for a short glitch.
+        if (
+          oldValue !== newValue
+        ) {
+
+          glitchGrid[y][x] =
+            1;
         }
 
-        darkGrid[y][x] = newValue;
+
+        darkGrid[y][x] =
+          newValue;
       }
     }
   }
@@ -381,24 +697,37 @@ function updateComposition() {
 
   // Decay change indicators.
   for (let y = 0; y < rows; y++) {
+
     for (let x = 0; x < cols; x++) {
 
       glitchGrid[y][x] *= 0.88;
+
       whiteFlashGrid[y][x] *= 0.82;
 
-      // Audio causes individual dark squares to switch.
+
+      // Audio causes individual
+      // dark squares to switch.
       if (
         hit > 0.35 &&
-        random() < hit * 0.0035
+        random() <
+        hit * 0.0035
       ) {
-        glitchGrid[y][x] = 1;
+
+        glitchGrid[y][x] =
+          1;
+
 
         if (random() < 0.55) {
-          darkGrid[y][x] = !darkGrid[y][x];
+
+          darkGrid[y][x] =
+            !darkGrid[y][x];
         }
 
+
         if (random() < 0.25) {
-          whiteFlashGrid[y][x] = 1;
+
+          whiteFlashGrid[y][x] =
+            1;
         }
       }
     }
@@ -413,48 +742,76 @@ function updateComposition() {
 function analyzeAudio() {
 
   if (!playing) {
+
     beatEnergy *= 0.94;
+
     hit *= 0.90;
+
     return;
   }
 
+
   fft.analyze();
 
-  bassEnergy = fft.getEnergy("bass") / 255;
-  midEnergy = fft.getEnergy("mid") / 255;
-  highEnergy = fft.getEnergy("treble") / 255;
+
+  bassEnergy =
+    fft.getEnergy("bass") /
+    255;
+
+  midEnergy =
+    fft.getEnergy("mid") /
+    255;
+
+  highEnergy =
+    fft.getEnergy("treble") /
+    255;
+
 
   let overall =
     bassEnergy * 0.55 +
     midEnergy * 0.30 +
     highEnergy * 0.15;
 
-  beatEnergy = lerp(
-    beatEnergy,
-    overall,
-    0.12
-  );
 
-  // Detect sudden bass changes.
-  let bassJump = bassEnergy - previousBass;
-
-  if (bassJump > 0.055) {
-    hit = constrain(
-      hit + bassJump * 3.5,
-      0,
-      1
+  beatEnergy =
+    lerp(
+      beatEnergy,
+      overall,
+      0.12
     );
 
+
+  // Detect sudden bass changes.
+  let bassJump =
+    bassEnergy -
+    previousBass;
+
+
+  if (bassJump > 0.055) {
+
+    hit =
+      constrain(
+        hit +
+        bassJump * 3.5,
+        0,
+        1
+      );
+
+
     triggerAudioGlitch();
+
   } else {
+
     hit *= 0.91;
   }
 
-  previousBass = lerp(
-    previousBass,
-    bassEnergy,
-    0.08
-  );
+
+  previousBass =
+    lerp(
+      previousBass,
+      bassEnergy,
+      0.08
+    );
 }
 
 
@@ -465,25 +822,53 @@ function analyzeAudio() {
 function triggerAudioGlitch() {
 
   // Number of cells affected by a hit.
-  let amount = floor(
-    map(hit, 0, 1, 8, 45)
-  );
+  let amount =
+    floor(
+      map(
+        hit,
+        0,
+        1,
+        8,
+        45
+      )
+    );
 
-  for (let i = 0; i < amount; i++) {
 
-    let x = floor(random(cols));
-    let y = floor(random(rows));
+  for (
+    let i = 0;
+    i < amount;
+    i++
+  ) {
 
-    glitchGrid[y][x] = 1;
+    let x =
+      floor(
+        random(cols)
+      );
 
-    // More black flashing than the previous version.
+    let y =
+      floor(
+        random(rows)
+      );
+
+
+    glitchGrid[y][x] =
+      1;
+
+
+    // More black flashing
+    // than the previous version.
     if (random() < 0.70) {
-      darkGrid[y][x] = !darkGrid[y][x];
+
+      darkGrid[y][x] =
+        !darkGrid[y][x];
     }
+
 
     // White flash is slightly rarer.
     if (random() < 0.22) {
-      whiteFlashGrid[y][x] = 1;
+
+      whiteFlashGrid[y][x] =
+        1;
     }
   }
 }
@@ -496,12 +881,27 @@ function triggerAudioGlitch() {
 function drawGrid() {
 
   // Very fine grid lines.
-  stroke(25, 25, 25, 105);
+  stroke(
+    25,
+    25,
+    25,
+    105
+  );
+
   strokeWeight(1);
 
-  // Drawing at integer coordinates keeps the grid crisp.
-  for (let x = 0; x <= cols; x++) {
-    let px = x * CELL;
+
+  // Drawing at integer coordinates
+  // keeps the grid crisp.
+  for (
+    let x = 0;
+    x <= cols;
+    x++
+  ) {
+
+    let px =
+      x * CELL;
+
 
     line(
       px,
@@ -511,8 +911,16 @@ function drawGrid() {
     );
   }
 
-  for (let y = 0; y <= rows; y++) {
-    let py = y * CELL;
+
+  for (
+    let y = 0;
+    y <= rows;
+    y++
+  ) {
+
+    let py =
+      y * CELL;
+
 
     line(
       0,
@@ -532,14 +940,21 @@ function drawArtwork() {
 
   noStroke();
 
+
   for (let y = 0; y < rows; y++) {
 
     for (let x = 0; x < cols; x++) {
 
-      let px = x * CELL;
-      let py = y * CELL;
+      let px =
+        x * CELL;
 
-      let dark = darkGrid[y][x];
+      let py =
+        y * CELL;
+
+
+      let dark =
+        darkGrid[y][x];
+
 
       // ------------------------------------------------------
       // Dark squares
@@ -547,7 +962,12 @@ function drawArtwork() {
 
       if (dark) {
 
-        fill(8, 15, 22);
+        fill(
+          8,
+          15,
+          22
+        );
+
 
         rect(
           px,
@@ -556,6 +976,7 @@ function drawArtwork() {
           CELL
         );
 
+
         // Occasional diagonal texture.
         // Kept extremely sharp and restrained.
         if (
@@ -563,8 +984,15 @@ function drawArtwork() {
           glitchGrid[y][x] < 0.25
         ) {
 
-          stroke(235, 238, 240, 190);
+          stroke(
+            235,
+            238,
+            240,
+            190
+          );
+
           strokeWeight(1);
+
 
           line(
             px,
@@ -572,6 +1000,7 @@ function drawArtwork() {
             px + CELL,
             py
           );
+
 
           noStroke();
         }
@@ -582,14 +1011,23 @@ function drawArtwork() {
       // Changed cells briefly invert.
       // ------------------------------------------------------
 
-      if (glitchGrid[y][x] > 0.42) {
+      if (
+        glitchGrid[y][x] >
+        0.42
+      ) {
 
         let probability =
-          glitchGrid[y][x] * 0.9;
+          glitchGrid[y][x] *
+          0.9;
 
-        if (random() < probability) {
 
-          // This is the main black/white glitch mechanism.
+        if (
+          random() <
+          probability
+        ) {
+
+          // Main black/white
+          // glitch mechanism.
           if (random() < 0.68) {
 
             fill(0);
@@ -620,14 +1058,19 @@ function drawArtwork() {
       // White flash.
       // ------------------------------------------------------
 
-      if (whiteFlashGrid[y][x] > 0.3) {
+      if (
+        whiteFlashGrid[y][x] >
+        0.3
+      ) {
 
         fill(
           255,
           255,
           255,
-          whiteFlashGrid[y][x] * 255
+          whiteFlashGrid[y][x] *
+          255
         );
+
 
         rect(
           px,
@@ -643,15 +1086,29 @@ function drawArtwork() {
   // ----------------------------------------------------------
   // Re-draw some grid lines over the artwork.
   //
-  // This keeps the "graph paper" quality of the reference.
+  // This keeps the "graph paper"
+  // quality of the reference.
   // ----------------------------------------------------------
 
-  stroke(25, 25, 25, 75);
+  stroke(
+    25,
+    25,
+    25,
+    75
+  );
+
   strokeWeight(1);
 
-  for (let x = 0; x <= cols; x++) {
 
-    let px = x * CELL;
+  for (
+    let x = 0;
+    x <= cols;
+    x++
+  ) {
+
+    let px =
+      x * CELL;
+
 
     line(
       px,
@@ -661,9 +1118,16 @@ function drawArtwork() {
     );
   }
 
-  for (let y = 0; y <= rows; y++) {
 
-    let py = y * CELL;
+  for (
+    let y = 0;
+    y <= rows;
+    y++
+  ) {
+
+    let py =
+      y * CELL;
+
 
     line(
       0,
@@ -685,28 +1149,53 @@ function drawAudioGlitches() {
     return;
   }
 
-  // More frequent flashes during louder moments.
-  let count = floor(
-    map(
-      hit,
-      0,
-      1,
-      1,
-      18
-    )
-  );
 
-  for (let i = 0; i < count; i++) {
+  // More frequent flashes
+  // during louder moments.
+  let count =
+    floor(
+      map(
+        hit,
+        0,
+        1,
+        1,
+        18
+      )
+    );
 
-    if (random() > hit * 0.75) {
+
+  for (
+    let i = 0;
+    i < count;
+    i++
+  ) {
+
+    if (
+      random() >
+      hit * 0.75
+    ) {
+
       continue;
     }
 
-    let gx = floor(random(cols));
-    let gy = floor(random(rows));
 
-    let px = gx * CELL;
-    let py = gy * CELL;
+    let gx =
+      floor(
+        random(cols)
+      );
+
+    let gy =
+      floor(
+        random(rows)
+      );
+
+
+    let px =
+      gx * CELL;
+
+    let py =
+      gy * CELL;
+
 
     // Mostly black.
     if (random() < 0.72) {
@@ -715,7 +1204,10 @@ function drawAudioGlitches() {
         0,
         0,
         0,
-        random(120, 255)
+        random(
+          120,
+          255
+        )
       );
 
     } else {
@@ -724,9 +1216,13 @@ function drawAudioGlitches() {
         255,
         255,
         255,
-        random(180, 255)
+        random(
+          180,
+          255
+        )
       );
     }
+
 
     rect(
       px,
@@ -747,11 +1243,26 @@ function drawStartText() {
   push();
 
   noStroke();
-  fill(15, 20, 25, 180);
 
-  textAlign(LEFT, TOP);
+  fill(
+    15,
+    20,
+    25,
+    180
+  );
+
+
+  textAlign(
+    LEFT,
+    TOP
+  );
+
   textSize(11);
-  textFont("monospace");
+
+  textFont(
+    "monospace"
+  );
+
 
   text(
     "CLICK TO PLAY",
@@ -759,17 +1270,21 @@ function drawStartText() {
     CELL * 2
   );
 
+
   pop();
 }
 
 
 // ============================================================
-// MOUSE / AUDIO
+// AUDIO
 // ============================================================
 
-function mousePressed() {
+function toggleAudio() {
 
+  // Required for iOS / mobile Safari
+  // to unlock the Web Audio context.
   userStartAudio();
+
 
   if (!playing) {
 
@@ -777,15 +1292,51 @@ function mousePressed() {
 
     playing = true;
 
-    lastRefresh = millis();
+    lastRefresh =
+      millis();
+
+    return;
+  }
+
+
+  if (song.isPlaying()) {
+
+    song.pause();
 
   } else {
 
-    if (song.isPlaying()) {
-      song.pause();
-    } else {
-      song.loop();
-    }
+    song.loop();
+  }
+}
+
+
+// ============================================================
+// DESKTOP MOUSE
+// ============================================================
+
+function mousePressed() {
+
+  // On desktop, clicking toggles audio.
+  if (!isMobileDevice()) {
+
+    toggleAudio();
+  }
+}
+
+
+// ============================================================
+// MOBILE TOUCH
+// ============================================================
+
+function touchStarted() {
+
+  if (isMobileDevice()) {
+
+    // The actual touch gesture
+    // unlocks and toggles audio.
+    toggleAudio();
+
+    return false;
   }
 }
 
@@ -796,17 +1347,71 @@ function mousePressed() {
 
 function windowResized() {
 
-  resizeCanvas(
-    windowWidth,
-    windowHeight
-  );
+  if (isMobileDevice()) {
 
-  calculateGrid();
-  generateComposition();
+    // Keep the mobile artwork as
+    // a fixed 16:9 landscape canvas.
+    resizeCanvas(
+      MOBILE_CANVAS_WIDTH,
+      MOBILE_CANVAS_HEIGHT
+    );
 
-  for (let y = 0; y < rows; y++) {
-    for (let x = 0; x < cols; x++) {
-      darkGrid[y][x] = nextGrid[y][x];
+
+    calculateGrid();
+
+    generateComposition();
+
+
+    for (
+      let y = 0;
+      y < rows;
+      y++
+    ) {
+
+      for (
+        let x = 0;
+        x < cols;
+        x++
+      ) {
+
+        darkGrid[y][x] =
+          nextGrid[y][x];
+      }
+    }
+
+
+    positionMobileCanvas();
+
+
+  } else {
+
+    // Desktop stays responsive.
+    resizeCanvas(
+      windowWidth,
+      windowHeight
+    );
+
+
+    calculateGrid();
+
+    generateComposition();
+
+
+    for (
+      let y = 0;
+      y < rows;
+      y++
+    ) {
+
+      for (
+        let x = 0;
+        x < cols;
+        x++
+      ) {
+
+        darkGrid[y][x] =
+          nextGrid[y][x];
+      }
     }
   }
 }
@@ -825,8 +1430,6 @@ function insideGrid(x, y) {
     y < rows
   );
 }
-
-
 </script>
 
 </body>
