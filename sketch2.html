@@ -19,7 +19,9 @@
 
 // ENTIRE CODE 2 HERE
 
-//WEBSITE CODE - LRAD AUDIO REACTIVE
+//SKETCH2 MOBILE FRIENDLY
+
+// WEBSITE CODE - LRAD AUDIO REACTIVE
 
 // LRAD AUDIO REACTIVE 2
 
@@ -59,7 +61,9 @@ let smoothedHigh = 0;
 // --------------------------------------------------
 
 function preload() {
+
   sound = loadSound("lradaudio.mp3");
+
 }
 
 
@@ -84,6 +88,15 @@ function setup() {
   createGrid();
 
   fitCanvas();
+
+  // Prevent mobile browsers from treating the canvas
+  // as a scrolling / zooming gesture.
+  const canvasElement = document.querySelector("canvas");
+
+  if (canvasElement) {
+    canvasElement.style.touchAction = "none";
+    canvasElement.style.display = "block";
+  }
 
   noStroke();
 }
@@ -166,16 +179,20 @@ function fitCanvas() {
   canvas.style.height = newH + "px";
 
   canvas.style.position = "absolute";
+
   canvas.style.left =
     (windowWidth - newW) / 2 + "px";
 
   canvas.style.top =
     (windowHeight - newH) / 2 + "px";
+
 }
 
 
 function windowResized() {
+
   fitCanvas();
+
 }
 
 
@@ -195,6 +212,7 @@ function draw() {
     drawStaticGrid();
 
     return;
+
   }
 
 
@@ -264,6 +282,7 @@ function draw() {
   drawFineGlitches();
 
   drawMinimalInformation();
+
 }
 
 
@@ -839,7 +858,7 @@ function drawStaticGrid() {
 
 
   text(
-    "CLICK TO PLAY",
+    "TAP TO PLAY",
     70,
     H - 55
   );
@@ -853,23 +872,67 @@ function drawStaticGrid() {
 
 function mousePressed() {
 
-  // First click: initialise the audio system
-  // and start the track.
+  startAudioFromGesture();
+
+  return false;
+
+}
+
+
+// --------------------------------------------------
+// MOBILE TOUCH
+// --------------------------------------------------
+
+function touchStarted() {
+
+  startAudioFromGesture();
+
+  return false;
+
+}
+
+
+// --------------------------------------------------
+// AUDIO GESTURE START
+// --------------------------------------------------
+
+function startAudioFromGesture() {
+
+  // Mobile browsers require the Web Audio context
+  // to be resumed from the user's tap.
+
+  const audioContext =
+    getAudioContext();
+
+
+  if (
+    audioContext.state !== "running"
+  ) {
+
+    audioContext.resume();
+
+  }
+
+
+  userStartAudio();
+
+
+  // First tap: initialise and play
 
   if (!started) {
-
-    userStartAudio();
 
     sound.loop();
 
     started = true;
+
     isPlaying = true;
 
     return;
+
   }
 
 
-  // Subsequent clicks toggle play/pause.
+  // Subsequent taps: pause
 
   if (isPlaying) {
 
@@ -877,7 +940,12 @@ function mousePressed() {
 
     isPlaying = false;
 
-  } else {
+  }
+
+
+  // Subsequent taps: play
+
+  else {
 
     sound.play();
 
