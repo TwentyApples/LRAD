@@ -19,6 +19,8 @@
 
 //   ENTIRE CODE 1 HERE
 
+//SKETCH1 MOBILE FRIENDLY
+
 //WEBSITE CODE - AUDIO REACTIVE MAP
 
 // ============================================================
@@ -339,33 +341,40 @@ function updateAudio() {
 // ============================================================
 // PLAY / PAUSE
 // ============================================================
+// PLAY / PAUSE
+// ============================================================
 
 function mousePressed() {
 
-  toggleAudio();
+  startAudioFromGesture();
+
+  return false;
 
 }
 
 
-function keyPressed() {
+function touchStarted() {
 
-  if (
-    key === " "
-  ) {
+  startAudioFromGesture();
 
-    toggleAudio();
+  return false;
 
+}
+
+
+function startAudioFromGesture() {
+
+  // Mobile browsers require the Web Audio context
+  // to be resumed from a user interaction.
+  const audioContext = getAudioContext();
+
+  if (audioContext.state !== "running") {
+    audioContext.resume();
   }
 
+  userStartAudio();
 
-  if (
-    key === "r" ||
-    key === "R"
-  ) {
-
-    triggerNewImage();
-
-  }
+  toggleAudio();
 
 }
 
@@ -384,9 +393,6 @@ function toggleAudio() {
     return;
 
   }
-
-
-  userStartAudio();
 
 
   // ----------------------------------------------------------
@@ -436,8 +442,6 @@ function toggleAudio() {
   }
 
 }
-
-
 // ============================================================
 // PLAY / PAUSE TEXT
 // ============================================================
