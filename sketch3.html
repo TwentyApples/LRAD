@@ -18,6 +18,7 @@
 <script>
 
 // ENTIRE CODE 3 HERE
+//SKETCH3 MOBILE VERSION
 
 //WEBSITE CODE - TSCHUMI AUDIO REACTIVE
 
@@ -49,6 +50,13 @@ let previousEnergy = 0;
 
 
 // ============================================================
+// MOBILE STATE
+// ============================================================
+
+let isMobile = false;
+
+
+// ============================================================
 // PRELOAD
 // ============================================================
 
@@ -65,6 +73,12 @@ function preload() {
 
 function setup() {
 
+  // Detect mobile only.
+  // Desktop behaviour below remains the original behaviour.
+  isMobile =
+    windowWidth <= 700;
+
+
   // Remove default browser spacing
   document.body.style.margin = "0";
 
@@ -77,36 +91,108 @@ function setup() {
   document.body.style.overflow = "hidden";
 
 
-  // Fit canvas to available screen
-  let canvasWidth =
-    min(
-      1300,
-      windowWidth - 20
+  // ----------------------------------------------------------
+  // CANVAS SIZE
+  // ----------------------------------------------------------
+  //
+  // DESKTOP:
+  // EXACTLY the original canvas sizing.
+  //
+  // MOBILE:
+  // Keep the actual drawing at 1300 x 900.
+  // We only visually scale/crop the HTML canvas afterwards.
+  // ----------------------------------------------------------
+
+  let canvasWidth;
+  let canvasHeight;
+
+
+  if (isMobile) {
+
+    canvasWidth = 1300;
+    canvasHeight = 900;
+
+  } else {
+
+    canvasWidth =
+      min(
+        1300,
+        windowWidth - 20
+      );
+
+    canvasHeight =
+      min(
+        900,
+        windowHeight - 20
+      );
+
+  }
+
+
+  let cnv =
+    createCanvas(
+      canvasWidth,
+      canvasHeight
     );
 
-  let canvasHeight =
-    min(
-      900,
-      windowHeight - 20
-    );
+
+  // ----------------------------------------------------------
+  // MOBILE DISPLAY
+  // ----------------------------------------------------------
+
+  if (isMobile) {
+
+    // Make sure the phone does not scale the page itself.
+    let viewport =
+      document.querySelector(
+        'meta[name="viewport"]'
+      );
 
 
-  createCanvas(
-    canvasWidth,
-    canvasHeight
-  );
+    if (!viewport) {
+
+      viewport =
+        document.createElement("meta");
+
+      viewport.name =
+        "viewport";
+
+      document.head.appendChild(
+        viewport
+      );
+
+    }
+
+
+    viewport.content =
+      "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no";
+
+
+    // Prevent the browser from interpreting
+    // the touch as page scrolling/zooming.
+    cnv.elt.style.touchAction =
+      "none";
+
+
+    positionMobileCanvas();
+
+  }
 
 
   // Audio analysis
-  fft = new p5.FFT(
-    0.85,
-    256
+  fft =
+    new p5.FFT(
+      0.85,
+      256
+    );
+
+  amp =
+    new p5.Amplitude();
+
+
+  textFont(
+    "monospace"
   );
-
-  amp = new p5.Amplitude();
-
-
-  textFont("monospace");
 
 }
 
@@ -147,6 +233,7 @@ function draw() {
   // ----------------------------------------------------------
 
   events = [];
+
 
   let w =
     width / cols;
@@ -233,7 +320,8 @@ function draw() {
     );
 
 
-    hitStrength *= 0.82;
+    hitStrength *=
+      0.82;
 
   }
 
@@ -321,6 +409,7 @@ function triggerPatternChange(
 ) {
 
   patternSeed++;
+
 
   randomSeed(
     patternSeed
@@ -1473,10 +1562,10 @@ function drawConfidence() {
 
 
 // ============================================================
-// CLICK = PLAY / PAUSE
+// AUDIO PLAY / PAUSE
 // ============================================================
 
-function mousePressed() {
+function toggleAudio() {
 
   userStartAudio();
 
@@ -1497,10 +1586,130 @@ function mousePressed() {
 
 
 // ============================================================
+// DESKTOP MOUSE
+// ============================================================
+
+function mousePressed() {
+
+  // Keep the original desktop click behaviour.
+  if (!isMobile) {
+
+    toggleAudio();
+
+  }
+
+}
+
+
+// ============================================================
+// MOBILE TOUCH
+// ============================================================
+
+function touchStarted() {
+
+  if (isMobile) {
+
+    toggleAudio();
+
+    return false;
+
+  }
+
+}
+
+
+// ============================================================
+// MOBILE CANVAS POSITIONING
+// ============================================================
+
+function positionMobileCanvas() {
+
+  if (!isMobile) {
+    return;
+  }
+
+
+  let cnv =
+    document.querySelector(
+      "canvas"
+    );
+
+
+  if (!cnv) {
+    return;
+  }
+
+
+  // The original artwork is 1300 x 900.
+  //
+  // Scale it so the COMPLETE 900px height fits the
+  // phone from top to bottom.
+  //
+  // Because 1300 x 900 is wider than a phone,
+  // the left and right sides are naturally cropped.
+  //
+  // Nothing inside the artwork is redrawn or squeezed.
+
+  let scale =
+    window.innerHeight / 900;
+
+
+  cnv.style.position =
+    "absolute";
+
+  cnv.style.width =
+    (1300 * scale) + "px";
+
+  cnv.style.height =
+    (900 * scale) + "px";
+
+  cnv.style.left =
+    "50%";
+
+  cnv.style.top =
+    "0";
+
+  cnv.style.transform =
+    "translateX(-50%)";
+
+  cnv.style.margin =
+    "0";
+
+}
+
+
+// ============================================================
 // RESIZE WITH WINDOW
 // ============================================================
 
 function windowResized() {
+
+  // ----------------------------------------------------------
+  // MOBILE
+  // ----------------------------------------------------------
+
+  if (isMobile) {
+
+    // NEVER change the actual drawing dimensions.
+    resizeCanvas(
+      1300,
+      900
+    );
+
+
+    positionMobileCanvas();
+
+    return;
+
+  }
+
+
+  // ----------------------------------------------------------
+  // DESKTOP
+  // ----------------------------------------------------------
+  //
+  // THIS IS THE ORIGINAL CODE.
+  // ----------------------------------------------------------
 
   let canvasWidth =
     min(
