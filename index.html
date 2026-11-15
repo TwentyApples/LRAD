@@ -1,123 +1,866 @@
+
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Earworm Network</title>
+<title>Earworm Network</title>
+<link rel="icon" type="image/png" href="favicon.png">
 
-  <link rel="icon" type="image/png" href="favicon.png">
+<style>
 
-  <style>
-    html,
-    body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      background: white;
-    }
+* {
+  box-sizing: border-box;
+}
 
-    #sketch-container {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-    }
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: white;
+  font-family: monospace;
+}
 
-    #next-button {
-      position: fixed;
-      right: 30px;
-      top: 50%;
-      transform: translateY(-50%);
+/* ENTRY SCREEN */
 
-      z-index: 1000;
+#entry-screen {
+  position: fixed;
+  inset: 0;
+  background: white;
+  z-index: 5000;
 
-      background: white;
-      color: black;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 
-      border: 1px solid black;
+  cursor: pointer;
+  text-align: center;
+}
 
-      padding: 12px 18px;
+#entry-title {
+  font-size: 13px;
+  letter-spacing: 3px;
+  margin-bottom: 12px;
+}
 
-      font-family: monospace;
-      font-size: 11px;
+#entry-subtitle {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #777;
+  margin-bottom: 55px;
+}
 
-      cursor: pointer;
-    }
+#enter-button {
+  font-size: 12px;
+  letter-spacing: 1px;
+  border: 1px solid black;
+  padding: 15px 22px;
+  background: white;
+  color: black;
+  transition: 0.2s;
+}
 
-    #next-button:hover {
-      background: black;
-      color: white;
-    }
-  </style>
+#entry-screen:hover #enter-button {
+  background: black;
+  color: white;
+}
+
+#entry-instruction {
+  position: absolute;
+  bottom: 35px;
+  font-size: 9px;
+  color: #999;
+  letter-spacing: 1px;
+}
+
+
+/* MAIN WEBSITE */
+
+#website {
+  position: absolute;
+  inset: 0;
+  display: none;
+  background: white;
+}
+
+
+/* SCROLLING TICKER */
+
+#ticker {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 32px;
+
+  background: black;
+  color: #c7ff00;
+
+  overflow: hidden;
+  white-space: nowrap;
+
+  z-index: 2000;
+
+  display: flex;
+  align-items: center;
+
+  border-bottom: 1px solid #c7ff00;
+}
+
+#ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-scroll 65s linear infinite;
+}
+
+.ticker-text {
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding-right: 30px;
+}
+
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+
+/* SKETCH CONTAINER */
+
+#sketch-container {
+  position: absolute;
+  left: 0;
+  top: 32px;
+  width: 100%;
+  height: calc(100% - 32px);
+  overflow: hidden;
+}
+
+#sketch-container iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+
+/* SKETCH INFORMATION BOX */
+
+#sketch-info {
+  position: fixed;
+  left: 25px;
+  bottom: 25px;
+
+  z-index: 1200;
+
+  background: rgba(255,255,255,0.94);
+  color: black;
+
+  border: 1px solid black;
+  padding: 12px 15px;
+
+  font-family: monospace;
+
+  min-width: 190px;
+  max-width: 280px;
+
+  pointer-events: auto;
+}
+
+#sketch-number {
+  font-size: 9px;
+  color: #888;
+  letter-spacing: 1px;
+  margin-bottom: 7px;
+}
+
+#brain-region {
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  margin-bottom: 5px;
+}
+
+#brain-state {
+  font-size: 10px;
+  color: #777;
+  letter-spacing: 0.5px;
+}
+
+#audio-instruction {
+  font-size: 9px;
+  color: black;
+  letter-spacing: 0.5px;
+  margin-top: 13px;
+  line-height: 1.5;
+}
+
+#sketch-info.fade {
+  animation: info-fade 0.5s ease;
+}
+
+@keyframes info-fade {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+/* NEXT BUTTON */
+
+#next-button {
+  position: fixed;
+  right: 30px;
+  top: 50%;
+  transform: translateY(-50%);
+
+  z-index: 2100;
+
+  background: white;
+  color: black;
+
+  border: 1px solid black;
+  padding: 12px 18px;
+
+  font-family: monospace;
+  font-size: 11px;
+
+  cursor: pointer;
+}
+
+#next-button:hover {
+  background: black;
+  color: white;
+}
+
+#next-button:disabled {
+  opacity: 0.4;
+  cursor: wait;
+}
+
+
+/* LOADING SCREEN */
+
+#sketch-loader {
+  position: fixed;
+  inset: 32px 0 0 0;
+
+  z-index: 1500;
+
+  background: #050505;
+  color: #c7ff00;
+
+  display: none;
+
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  font-family: monospace;
+}
+
+.loader-title {
+  font-size: 18px;
+  letter-spacing: 5px;
+  margin-bottom: 20px;
+  animation: loader-flicker 2s infinite;
+}
+
+#loader-status {
+  font-size: 10px;
+  letter-spacing: 2px;
+  margin-bottom: 25px;
+  text-align: center;
+}
+
+.loader-bar {
+  width: 220px;
+  height: 2px;
+  background: #333;
+  overflow: hidden;
+}
+
+#loader-progress {
+  height: 100%;
+  width: 35%;
+  background: #c7ff00;
+  animation: loading-move 1.2s infinite ease-in-out;
+}
+
+#loader-percent {
+  font-size: 10px;
+  margin-top: 12px;
+}
+
+.loader-warning {
+  position: absolute;
+  bottom: 25px;
+  font-size: 9px;
+  color: #666;
+  text-align: center;
+  padding: 0 15px;
+}
+
+@keyframes loading-move {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  100% {
+    transform: translateX(320%);
+  }
+}
+
+@keyframes loader-flicker {
+  0%, 90%, 100% { opacity: 1; }
+  92% { opacity: 0.2; }
+  95% { opacity: 0.8; }
+}
+
+
+/* FINAL SCREEN */
+
+#final-screen {
+  position: fixed;
+  inset: 32px 0 0 0;
+
+  z-index: 1800;
+
+  background: white;
+  color: black;
+
+  display: none;
+
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  text-align: center;
+  padding: 25px;
+}
+
+#final-title {
+  font-size: 13px;
+  letter-spacing: 4px;
+  margin-bottom: 35px;
+}
+
+#final-message {
+  font-size: 12px;
+  line-height: 2.5;
+  letter-spacing: 1px;
+  max-width: 500px;
+}
+
+#final-subtitle {
+  font-size: 10px;
+  color: #888;
+  margin-top: 35px;
+  line-height: 2;
+}
+
+#restart-button {
+  margin-top: 50px;
+
+  background: white;
+  color: black;
+
+  border: 1px solid black;
+  padding: 13px 20px;
+
+  font-family: monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+
+  cursor: pointer;
+}
+
+#restart-button:hover {
+  background: black;
+  color: white;
+}
+
+
+/* MOBILE */
+
+@media (max-width: 600px) {
+
+  #next-button {
+    right: 12px;
+    padding: 10px 13px;
+    font-size: 10px;
+  }
+
+  #sketch-info {
+    left: 12px;
+    bottom: 12px;
+    min-width: 160px;
+    max-width: 220px;
+    padding: 9px 11px;
+  }
+
+  #brain-region {
+    font-size: 10px;
+  }
+
+  #brain-state {
+    font-size: 9px;
+  }
+
+  #audio-instruction {
+    font-size: 8px;
+  }
+
+  #entry-title {
+    font-size: 11px;
+  }
+
+  .ticker-text {
+    font-size: 10px;
+  }
+
+  .loader-title {
+    font-size: 14px;
+  }
+
+  #final-message {
+    font-size: 10px;
+  }
+
+}
+
+</style>
 </head>
+
 
 <body>
 
+
+<!-- ENTRY SCREEN -->
+
+<div id="entry-screen">
+
+  <div id="entry-title">
+    EARWORM NETWORK
+  </div>
+
+  <div id="entry-subtitle">
+    A FLOW STATE MACHINE BY SCARLETT HENDERSON
+  </div>
+
+  <div id="enter-button">
+    ENTER THE DEFAULT MODE NETWORK →
+  </div>
+
+</div>
+
+
+
+<!-- MAIN WEBSITE -->
+
+<div id="website">
+
+
+  <!-- SCROLLING TICKER -->
+
+  <div id="ticker">
+
+    <div id="ticker-track">
+
+      <div class="ticker-text">
+        AFFIRMATIONS FOR A DEFAULT MODE NETWORK |
+        YOU HAVE MANY HIGH QUALITY NEURONS |
+        YOU ARE FIRING AT AN IMPRESSIVE RATE |
+        YOUR WORKING MEMORY IS ABOVE AVERAGE |
+        EMBODIED AWARENESS IS REGULATED |
+        YOUR GAMMA WAVES SMOOTH AT 40HZ |
+        FLOW STATE REQUIRES EGO DISSOLUTION |
+        AFFIRMATIONS FOR A DEFAULT MODE NETWORK |
+        YOUR ULTRADIAN OSCILLATIONS ARE IN SYNC |
+        YOUR ULTRASOUND PULSES ARE MORE TRANSCRANIALLY MAGNETIC THAN AVERAGE |
+        YOU HAVE THE NEUROPLASTICITY OF A CHILD |
+        YOUR BRAIN IS A PREDICTIVE PROCESSING MACHINE |
+      </div>
+
+      <div class="ticker-text" aria-hidden="true">
+        YOU HAVE MANY HIGH QUALITY NEURONS |
+        YOU ARE FIRING AT AN IMPRESSIVE RATE |
+        YOUR WORKING MEMORY IS ABOVE AVERAGE |
+        EMBODIED AWARENESS IS REGULATED |
+        YOUR GAMMA WAVES SMOOTH AT 40HZ |
+        FLOW STATE REQUIRES EGO DISSOLUTION |
+        AFFIRMATIONS FOR A DEFAULT MODE NETWORK |
+        YOUR ULTRADIAN OSCILLATIONS ARE IN SYNC |
+        YOUR ULTRASOUND PULSES ARE MORE TRANSCRANIALLY MAGNETIC THAN AVERAGE |
+        YOU HAVE THE NEUROPLASTICITY OF A CHILD |
+        YOUR BRAIN IS A PREDICTIVE PROCESSING MACHINE |
+        AFFIRMATIONS FOR A DEFAULT MODE NETWORK |
+        YOU ARE COOL IN A CRISIS |
+        YOU CAN HANDLE MULTITASKING |
+        YOU CAN FIRE NEURONS TO MUSCLES WHILE HAVING A MEMORY |
+        YOU CAN BLOCK UNHLEPFUL SIGNALS |
+        YOU ARE A STRONG DEFAULT MODE NETWORK |
+        AFFIRMATIONS FOR A DEFAULT MODE NETWORK |
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- SKETCHES -->
+
   <div id="sketch-container"></div>
 
-  <button id="next-button">NEXT</button>
-
-  <script>
-
-    const sketches = [
-      "sketch1.html",
-      "sketch2.html",
-      "sketch3.html",
-      "sketch4.html",
-      "sketch5.html",
-      "sketch6.html"
-    ];
-
-    let currentSketch = 0;
-
-    const container =
-      document.getElementById("sketch-container");
-
-    const nextButton =
-      document.getElementById("next-button");
 
 
-    function loadSketch(index) {
+  <!-- SKETCH DESCRIPTION -->
 
-      currentSketch = index;
+  <div id="sketch-info">
 
-      container.innerHTML = "";
+    <div id="sketch-number">SKETCH 01 / 06</div>
 
-      const iframe =
-        document.createElement("iframe");
+    <div id="brain-region">DEFAULT MODE NETWORK</div>
 
-      iframe.src = sketches[currentSketch];
+    <div id="brain-state">OH NO! MIND WANDERING!</div>
 
-      iframe.style.width = "100%";
-      iframe.style.height = "100%";
-      iframe.style.border = "none";
+    <div id="audio-instruction">
+      (CLICK ANYWHERE TO PLAY AUDIO)
+    </div>
 
-      iframe.allow = "autoplay";
-
-      container.appendChild(iframe);
-    }
+  </div>
 
 
-    nextButton.addEventListener("click", function () {
 
-      currentSketch++;
+  <!-- NEXT BUTTON -->
 
-      if (currentSketch >= sketches.length) {
-        currentSketch = 0;
-      }
-
-      loadSketch(currentSketch);
-
-    });
+  <button id="next-button">
+    NEXT →
+  </button>
 
 
-    loadSketch(0);
 
-  </script>
+  <!-- LOADING OVERLAY -->
+
+  <div id="sketch-loader">
+
+    <div class="loader-title">
+      EARWORM NETWORK
+    </div>
+
+    <div id="loader-status">
+      RECONFIGURING NEURAL NETWORK...
+    </div>
+
+    <div class="loader-bar">
+      <div id="loader-progress"></div>
+    </div>
+
+    <div id="loader-percent">
+      SYNCHRONISING
+    </div>
+
+    <div class="loader-warning">
+      PLEASE WAIT | THE NETWORK IS RECONFIGURING 
+    </div>
+
+  </div>
+
+
+
+  <!-- FINAL SCREEN -->
+
+  <div id="final-screen">
+
+    <div id="final-title">
+      EARWORM NETWORK
+    </div>
+
+    <div id="final-message">
+      THANK YOU FOR EXPERIENCING THE EARWORM NETWORK.
+      <br>
+      YOUR BRAINWAVES HAVE BEEN ALIGNED.
+      <br>
+      COME AGAIN SOON.
+    </div>
+
+    <button id="restart-button">
+      ↻ RE-ENTER THE NETWORK
+    </button>
+
+  </div>
+
+
+</div>
+
+
+
+<script>
+
+
+/* =========================
+   SKETCH INFORMATION
+========================= */
+
+const sketches = [
+
+  {
+    file: "sketch1.html",
+    number: "STATE 1",
+    brain: "DEFAULT MODE NETWORK",
+    state: "OH NO! MIND WANDERING!"
+  },
+
+  {
+    file: "sketch2.html",
+    number: "STATE 2",
+    brain: "PREFRONTAL CORTEX",
+    state: "ACHIEVING COGNITIVE CONTROL..."
+  },
+
+  {
+    file: "sketch3.html",
+    number: "STATE 3",
+    brain: "MOTOR CORTEX",
+    state: "FEELING NEURONS..."
+  },
+
+  {
+    file: "sketch4.html",
+    number: "STATE 4",
+    brain: "HIPPOCAMPUS",
+    state: "RECALIBRATING MEMORIES..."
+  },
+
+  {
+    file: "sketch5.html",
+    number: "STATE 5",
+    brain: "AMYGDALA",
+    state: "FEARING NOTHING..."
+  },
+
+  {
+    file: "sketch6.html",
+    number: "STATE 6",
+    brain: "TEMPOROPARIETAL JUNCTION",
+    state: "DISSOLVING EGO..."
+  }
+
+];
+
+
+let currentSketch = 0;
+let isLoading = false;
+
+
+/* =========================
+   ELEMENTS
+========================= */
+
+const container =
+  document.getElementById("sketch-container");
+
+const nextButton =
+  document.getElementById("next-button");
+
+const entryScreen =
+  document.getElementById("entry-screen");
+
+const website =
+  document.getElementById("website");
+
+const loader =
+  document.getElementById("sketch-loader");
+
+const loaderStatus =
+  document.getElementById("loader-status");
+
+const infoBox =
+  document.getElementById("sketch-info");
+
+const sketchNumber =
+  document.getElementById("sketch-number");
+
+const brainRegion =
+  document.getElementById("brain-region");
+
+const brainState =
+  document.getElementById("brain-state");
+
+const finalScreen =
+  document.getElementById("final-screen");
+
+const restartButton =
+  document.getElementById("restart-button");
+
+
+/* =========================
+   UPDATE DESCRIPTION
+========================= */
+
+function updateInfo(index) {
+
+  const sketch = sketches[index];
+
+  sketchNumber.textContent = sketch.number;
+  brainRegion.textContent = sketch.brain;
+  brainState.textContent = sketch.state;
+
+  infoBox.classList.remove("fade");
+
+  void infoBox.offsetWidth;
+
+  infoBox.classList.add("fade");
+
+}
+
+
+/* =========================
+   LOAD SKETCH
+========================= */
+
+function loadSketch(index) {
+
+  if (isLoading) return;
+
+  isLoading = true;
+
+  currentSketch = index;
+
+  loader.style.display = "flex";
+
+  loaderStatus.textContent =
+    "RECONFIGURING NEURAL NETWORK...";
+
+  nextButton.disabled = true;
+
+  const iframe = document.createElement("iframe");
+
+  iframe.allow = "autoplay";
+
+  iframe.style.visibility = "hidden";
+
+  iframe.addEventListener("load", function() {
+
+    loaderStatus.textContent =
+      "NEURAL CONNECTION ESTABLISHED";
+
+    container.innerHTML = "";
+
+    iframe.style.visibility = "visible";
+
+    container.appendChild(iframe);
+
+    updateInfo(currentSketch);
+
+    setTimeout(function() {
+
+      loader.style.display = "none";
+
+      nextButton.disabled = false;
+
+      isLoading = false;
+
+    }, 500);
+
+  }, { once: true });
+
+
+  iframe.src = sketches[index].file;
+
+  container.appendChild(iframe);
+
+}
+
+
+/* =========================
+   SHOW FINAL SCREEN
+========================= */
+
+function showFinalScreen() {
+
+  container.innerHTML = "";
+
+  infoBox.style.display = "none";
+  nextButton.style.display = "none";
+
+  finalScreen.style.display = "flex";
+
+}
+
+
+/* =========================
+   NEXT BUTTON
+========================= */
+
+nextButton.addEventListener("click", function() {
+
+  if (isLoading) return;
+
+  // After sketch 6, show the final screen.
+
+  if (currentSketch === sketches.length - 1) {
+
+    showFinalScreen();
+
+    return;
+
+  }
+
+  loadSketch(currentSketch + 1);
+
+});
+
+
+/* =========================
+   RESTART NETWORK
+========================= */
+
+restartButton.addEventListener("click", function() {
+
+  finalScreen.style.display = "none";
+
+  infoBox.style.display = "block";
+  nextButton.style.display = "block";
+
+  loadSketch(0);
+
+});
+
+
+/* =========================
+   ENTER WEBSITE
+========================= */
+
+entryScreen.addEventListener("click", function() {
+
+  entryScreen.style.display = "none";
+
+  website.style.display = "block";
+
+  loadSketch(0);
+
+});
+
+
+</script>
 
 </body>
 </html>
